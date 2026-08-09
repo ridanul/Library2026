@@ -1,0 +1,216 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Athenaeum — Dashboard</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<script>
+  tailwind.config = {
+    theme: {
+      extend: {
+        colors: {
+          ink: '#1B2A4A', parchment: '#F3EDE1', parchmentDark: '#E8DFCC',
+          brass: '#B8894A', sage: '#6B7F6E', rust: '#A8442E', charcoal: '#2E2B28',
+        },
+        fontFamily: {
+          display: ['Fraunces', 'serif'],
+          mono: ['IBM Plex Mono', 'monospace'],
+        },
+      },
+    },
+  };
+</script>
+<link rel="stylesheet" href="css/styles.css" />
+</head>
+<body class="paper-texture min-h-screen">
+
+  <!-- Header -->
+  <header class="bg-ink text-parchment sticky top-0 z-30 shadow-md shadow-ink/10">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 py-3 flex items-center justify-between gap-4">
+      <div class="flex items-center gap-3">
+        <span class="font-display text-xl">Athenaeum</span>
+        <span id="demoBadge" class="hidden stamp stamp-new border-brass text-brass text-[10px]">Demo mode</span>
+      </div>
+
+      <nav class="hidden sm:flex items-center gap-1 font-mono text-xs uppercase tracking-wide">
+        <button data-view="browse" class="nav-btn px-3 py-1.5 rounded">Browse</button>
+        <button data-view="recommendations" class="nav-btn px-3 py-1.5 rounded">For You</button>
+        <button data-view="notifications" class="nav-btn px-3 py-1.5 rounded relative">
+          Notifications
+          <span id="notifDot" class="hidden absolute -top-1 -right-1 w-2 h-2 rounded-full bg-rust"></span>
+        </button>
+        <button data-view="manage" id="manageNavBtn" class="nav-btn hidden px-3 py-1.5 rounded">Manage</button>
+      </nav>
+
+      <div class="flex items-center gap-3">
+        <div class="text-right hidden sm:block">
+          <p class="text-sm font-medium leading-tight" id="headerUserName">—</p>
+          <p class="text-[10px] font-mono uppercase tracking-wide text-brass" id="headerUserRole">—</p>
+        </div>
+        <button id="logoutBtn" class="text-xs font-mono border border-parchment/30 rounded px-3 py-1.5 hover:bg-parchment/10 transition">
+          Sign out
+        </button>
+      </div>
+    </div>
+    <!-- Mobile nav -->
+    <div class="sm:hidden flex overflow-x-auto gap-1 px-4 pb-3 font-mono text-xs uppercase tracking-wide">
+      <button data-view="browse" class="nav-btn px-3 py-1.5 rounded whitespace-nowrap">Browse</button>
+      <button data-view="recommendations" class="nav-btn px-3 py-1.5 rounded whitespace-nowrap">For You</button>
+      <button data-view="notifications" class="nav-btn px-3 py-1.5 rounded whitespace-nowrap">Notifications</button>
+      <button data-view="manage" id="manageNavBtnMobile" class="nav-btn hidden px-3 py-1.5 rounded whitespace-nowrap">Manage</button>
+    </div>
+  </header>
+
+  <main class="max-w-7xl mx-auto px-4 sm:px-6 py-8">
+
+    <!-- ================= BROWSE VIEW ================= -->
+    <section id="view-browse" class="view-panel">
+      <div class="flex flex-col sm:flex-row sm:items-end justify-between gap-4 mb-6">
+        <div>
+          <p class="font-mono text-xs tracking-[0.2em] text-brass uppercase mb-1">Card Catalog</p>
+          <h1 class="font-display text-3xl text-ink">Search the stacks</h1>
+        </div>
+      </div>
+
+      <div class="flex flex-col sm:flex-row gap-3 mb-6">
+        <input id="searchInput" type="text" placeholder="Search by title, author, or ISBN…"
+          class="flex-1 border border-ink/15 rounded px-4 py-2.5 bg-white focus:outline-none focus:ring-2 focus:ring-brass" />
+        <select id="genreFilter" class="border border-ink/15 rounded px-3 py-2.5 bg-white focus:outline-none focus:ring-2 focus:ring-brass">
+          <option value="">All genres</option>
+        </select>
+      </div>
+
+      <div id="bookGrid" class="grid sm:grid-cols-2 lg:grid-cols-3 gap-6"></div>
+      <p id="bookEmpty" class="hidden text-center text-charcoal/50 font-mono text-sm py-12">No books match that search.</p>
+    </section>
+
+    <!-- ================= RECOMMENDATIONS VIEW ================= -->
+    <section id="view-recommendations" class="view-panel hidden">
+      <div class="flex flex-col sm:flex-row sm:items-end justify-between gap-4 mb-6">
+        <div>
+          <p class="font-mono text-xs tracking-[0.2em] text-brass uppercase mb-1">Picked for you</p>
+          <h1 class="font-display text-3xl text-ink">Because you read…</h1>
+        </div>
+        <button id="editInterestsBtn" class="text-sm font-mono border border-ink/20 rounded px-3 py-2 hover:bg-parchmentDark transition">
+          Edit interests
+        </button>
+      </div>
+      <div id="interestChips" class="flex flex-wrap gap-2 mb-6"></div>
+      <div id="recGrid" class="grid sm:grid-cols-2 lg:grid-cols-3 gap-6"></div>
+      <p id="recEmpty" class="hidden text-center text-charcoal/50 font-mono text-sm py-12">
+        Add a few interests to get personalized picks.
+      </p>
+    </section>
+
+    <!-- ================= NOTIFICATIONS VIEW ================= -->
+    <section id="view-notifications" class="view-panel hidden">
+      <p class="font-mono text-xs tracking-[0.2em] text-brass uppercase mb-1">Circulation Desk</p>
+      <h1 class="font-display text-3xl text-ink mb-6">Notifications</h1>
+      <div id="notifList" class="space-y-3 max-w-2xl"></div>
+      <p id="notifEmpty" class="hidden text-center text-charcoal/50 font-mono text-sm py-12">You're all caught up.</p>
+    </section>
+
+    <!-- ================= ADMIN: MANAGE VIEW ================= -->
+    <section id="view-manage" class="view-panel hidden">
+      <div class="flex flex-col sm:flex-row sm:items-end justify-between gap-4 mb-6">
+        <div>
+          <p class="font-mono text-xs tracking-[0.2em] text-brass uppercase mb-1">Librarian Desk</p>
+          <h1 class="font-display text-3xl text-ink">Manage the collection</h1>
+        </div>
+        <button id="openAddBookBtn" class="bg-brass text-white font-medium px-4 py-2.5 rounded hover:bg-brass/90 transition">
+          + Add a book
+        </button>
+      </div>
+      <div class="overflow-x-auto border border-ink/10 rounded-lg bg-white/70">
+        <table class="w-full text-sm">
+          <thead class="bg-parchmentDark font-mono text-xs uppercase tracking-wide text-charcoal/70">
+            <tr>
+              <th class="text-left px-4 py-3">Title</th>
+              <th class="text-left px-4 py-3">Author</th>
+              <th class="text-left px-4 py-3">Genre</th>
+              <th class="text-left px-4 py-3">Call #</th>
+              <th class="text-left px-4 py-3">Copies</th>
+              <th class="text-right px-4 py-3">Actions</th>
+            </tr>
+          </thead>
+          <tbody id="manageTableBody"></tbody>
+        </table>
+      </div>
+    </section>
+  </main>
+
+  <!-- ================= Add/Edit Book Modal ================= -->
+  <div id="bookModal" class="hidden fixed inset-0 bg-ink/40 backdrop-blur-sm z-40 flex items-center justify-center p-4">
+    <div class="bg-parchment border border-ink/15 rounded-lg w-full max-w-lg p-6 shadow-2xl">
+      <div class="flex items-center justify-between mb-4">
+        <h2 id="bookModalTitle" class="font-display text-xl text-ink">Add a book</h2>
+        <button id="closeBookModal" class="text-charcoal/50 hover:text-charcoal">✕</button>
+      </div>
+      <form id="bookForm" class="space-y-3">
+        <input type="hidden" id="bookId" />
+        <div>
+          <label class="block text-xs font-mono uppercase tracking-wide text-charcoal/60 mb-1">Title</label>
+          <input id="bookTitle" required class="w-full border border-ink/15 rounded px-3 py-2 bg-white focus:outline-none focus:ring-2 focus:ring-brass" />
+        </div>
+        <div class="grid grid-cols-2 gap-3">
+          <div>
+            <label class="block text-xs font-mono uppercase tracking-wide text-charcoal/60 mb-1">Author</label>
+            <input id="bookAuthor" required class="w-full border border-ink/15 rounded px-3 py-2 bg-white focus:outline-none focus:ring-2 focus:ring-brass" />
+          </div>
+          <div>
+            <label class="block text-xs font-mono uppercase tracking-wide text-charcoal/60 mb-1">ISBN</label>
+            <input id="bookIsbn" required class="w-full border border-ink/15 rounded px-3 py-2 bg-white focus:outline-none focus:ring-2 focus:ring-brass" />
+          </div>
+        </div>
+        <div class="grid grid-cols-2 gap-3">
+          <div>
+            <label class="block text-xs font-mono uppercase tracking-wide text-charcoal/60 mb-1">Genre</label>
+            <input id="bookGenre" required list="genreList" class="w-full border border-ink/15 rounded px-3 py-2 bg-white focus:outline-none focus:ring-2 focus:ring-brass" />
+            <datalist id="genreList"></datalist>
+          </div>
+          <div>
+            <label class="block text-xs font-mono uppercase tracking-wide text-charcoal/60 mb-1">Call number</label>
+            <input id="bookCallNumber" class="w-full border border-ink/15 rounded px-3 py-2 bg-white focus:outline-none focus:ring-2 focus:ring-brass" />
+          </div>
+        </div>
+        <div>
+          <label class="block text-xs font-mono uppercase tracking-wide text-charcoal/60 mb-1">Copies</label>
+          <input id="bookCopies" type="number" min="1" value="1" required class="w-full border border-ink/15 rounded px-3 py-2 bg-white focus:outline-none focus:ring-2 focus:ring-brass" />
+        </div>
+        <div>
+          <label class="block text-xs font-mono uppercase tracking-wide text-charcoal/60 mb-1">Description</label>
+          <textarea id="bookDescription" rows="3" class="w-full border border-ink/15 rounded px-3 py-2 bg-white focus:outline-none focus:ring-2 focus:ring-brass"></textarea>
+        </div>
+        <p id="bookFormError" class="text-rust text-sm hidden"></p>
+        <div class="flex gap-2 pt-2">
+          <button type="submit" class="flex-1 bg-ink text-parchment font-medium py-2.5 rounded hover:bg-ink/90 transition">Save book</button>
+          <button type="button" id="cancelBookModal" class="px-4 py-2.5 rounded border border-ink/15 hover:bg-parchmentDark transition">Cancel</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- ================= Interests Modal ================= -->
+  <div id="interestsModal" class="hidden fixed inset-0 bg-ink/40 backdrop-blur-sm z-40 flex items-center justify-center p-4">
+    <div class="bg-parchment border border-ink/15 rounded-lg w-full max-w-md p-6 shadow-2xl">
+      <div class="flex items-center justify-between mb-4">
+        <h2 class="font-display text-xl text-ink">Your interests</h2>
+        <button id="closeInterestsModal" class="text-charcoal/50 hover:text-charcoal">✕</button>
+      </div>
+      <p class="text-sm text-charcoal/60 mb-4">Pick a few genres — we'll recommend books and notify you about new arrivals.</p>
+      <div id="interestOptions" class="flex flex-wrap gap-2 mb-5"></div>
+      <button id="saveInterestsBtn" class="w-full bg-brass text-white font-medium py-2.5 rounded hover:bg-brass/90 transition">Save interests</button>
+    </div>
+  </div>
+
+  <!-- Toast -->
+  <div id="toast" class="hidden fixed bottom-6 left-1/2 -translate-x-1/2 bg-ink text-parchment font-mono text-sm px-4 py-2.5 rounded shadow-lg z-50"></div>
+
+<script src="js/config.js"></script>
+<script src="js/mock.js"></script>
+<script src="js/api.js"></script>
+<script src="js/auth.js"></script>
+<script src="js/dashboard.js"></script>
+</body>
+</html>

@@ -1,0 +1,194 @@
+// ---------------------------------------------------------------------------
+// Mock backend. Simulates the FastAPI contract in-browser using localStorage,
+// so this frontend can be explored before the real API exists. Swap this out
+// with nothing — Api.js only calls into here when a real request fails.
+// ---------------------------------------------------------------------------
+const Mock = (() => {
+  const DB_KEY = "lib_mock_db_v1";
+
+  function seed() {
+    return {
+      users: [
+        { id: "u1", name: "Priya Nair", email: "student@demo.io", password: "student123", role: "student", genres: ["Sci-Fi", "Mystery"] },
+        { id: "u2", name: "Marcus Webb", email: "admin@demo.io", password: "admin123", role: "admin", genres: [] },
+      ],
+      books: [
+        { id: "b1", title: "The Left Hand of Darkness", author: "Ursula K. Le Guin", isbn: "9780441478125", genre: "Sci-Fi", call_number: "SF 823.9 LEG", copies: 3, available: 2, cover_url: "", description: "A envoy navigates a wintry planet where inhabitants have no fixed gender.", added_at: "2026-07-28" },
+        { id: "b2", title: "Gone Girl", author: "Gillian Flynn", isbn: "9780307588364", genre: "Mystery", call_number: "MY 813.6 FLY", copies: 2, available: 0, cover_url: "", description: "A marriage unravels into a media circus and a hunt for the truth.", added_at: "2026-07-30" },
+        { id: "b3", title: "Sapiens", author: "Yuval Noah Harari", isbn: "9780062316097", genre: "Non-Fiction", call_number: "NF 909 HAR", copies: 4, available: 4, cover_url: "", description: "A sweeping account of how Homo sapiens came to dominate the planet.", added_at: "2026-06-14" },
+        { id: "b4", title: "Piranesi", author: "Susanna Clarke", isbn: "9781635575637", genre: "Fantasy", call_number: "FA 823.92 CLA", copies: 2, available: 1, cover_url: "", description: "A man lives inside an endless, statue-filled House he cannot leave.", added_at: "2026-08-02" },
+        { id: "b5", title: "Project Hail Mary", author: "Andy Weir", isbn: "9780593135204", genre: "Sci-Fi", call_number: "SF 813.6 WEI", copies: 3, available: 3, cover_url: "", description: "A lone astronaut wakes with no memory and humanity's survival at stake.", added_at: "2026-08-05" },
+        { id: "b6", title: "In Cold Blood", author: "Truman Capote", isbn: "9780679745587", genre: "Mystery", call_number: "MY 364.15 CAP", copies: 2, available: 2, cover_url: "", description: "A meticulous account of a real 1959 Kansas murder and its aftermath.", added_at: "2026-05-20" },
+      ],
+      notifications: [
+        { id: "n1", title: "New arrival in Sci-Fi", body: "Project Hail Mary by Andy Weir just landed on the shelf.", read: false, created_at: "2026-08-05" },
+        { id: "n2", title: "New arrival in Fantasy", body: "Piranesi by Susanna Clarke is now available.", read: false, created_at: "2026-08-02" },
+        { id: "n3", title: "Reminder", body: "Gone Girl is fully checked out — you're 2nd in line.", read: true, created_at: "2026-07-30" },
+      ],
+      session: null, // {userId}
+    };
+  }
+
+  function db() {
+    let d = JSON.parse(localStorage.getItem(DB_KEY) || "null");
+    if (!d) {
+      d = seed();
+      localStorage.setItem(DB_KEY, JSON.stringify(d));
+    }
+    return d;
+  }
+  function save(d) {
+    localStorage.setItem(DB_KEY, JSON.stringify(d));
+  }
+  function token(userId) {
+    return `demo.${userId}`;
+  }
+  function userFromToken() {
+    const t = localStorage.getItem("lib_token") || "";
+    const id = t.split(".")[1];
+    return db().users.find((u) => u.id === id) || null;
+  }
+  function publicUser(u) {
+    return { id: u.id, name: u.name, email: u.email, role: u.role, genres: u.genres };
+  }
+  function delay(ms = 350) {
+    return new Promise((r) => setTimeout(r, ms));
+  }
+
+  async function route(path, method, body) {
+    await delay();
+    const d = db();
+
+    if (path === "/auth/register" && method === "POST") {
+      if (d.users.some((u) => u.email === body.email)) {
+        const e = new Error("An account with that email already exists.");
+        e.status = 409;
+        throw e;
+      }
+      const user = { id: `u${Date.now()}`, name: body.name, email: body.email, password: body.password, role: body.role || "student", genres: [] };
+      d.users.push(user);
+      save(d);
+      return { token: token(user.id), user: publicUser(user) };
+    }
+
+    if (path === "/auth/login" && method === "POST") {
+      const user = d.users.find((u) => u.email === body.email && u.password === body.password);
+      if (!user) {
+        const e = new Error("Incorrect email or password.");
+        e.status = 401;
+        throw e;
+      }
+      return { token: token(user.id), user: publicUser(user) };
+    }
+
+    if (path === "/auth/me") {
+      const user = userFromToken();
+      if (!user) { const e = new Error("Not authenticated"); e.status = 401; throw e; }
+      return { user: publicUser(user) };
+    }
+
+    if (path.startsWith("/books") && method === "GET") {
+      const url = new URL(`http://x${path}`);
+      const search = (url.searchParams.get("search") || "").toLowerCase();
+      const genre = url.searchParams.get("genre") || "";
+      let results = d.books;
+      if (search) {
+        results = results.filter(
+          (b) => b.title.toLowerCase().includes(search) || b.author.toLowerCase().includes(search) || b.isbn.includes(search)
+        );
+      }
+      if (genre) results = results.filter((b) => b.genre === genre);
+      return { items: results, total: results.length };
+    }
+
+    if (path === "/books" && method === "POST") {
+      const book = {
+        id: `b${Date.now()}`,
+        call_number: body.call_number || "N/A",
+        available: Number(body.copies || 1),
+        added_at: new Date().toISOString().slice(0, 10),
+        ...body,
+      };
+      d.books.unshift(book);
+      // simulate a "new book" notification going out to interested students
+      d.notifications.unshift({
+        id: `n${Date.now()}`,
+        title: `New arrival in ${book.genre}`,
+        body: `${book.title} by ${book.author} just landed on the shelf.`,
+        read: false,
+        created_at: book.added_at,
+      });
+      save(d);
+      return book;
+    }
+
+    if (path.match(/^\/books\/[^/]+$/) && method === "PUT") {
+      const id = path.split("/")[2];
+      const idx = d.books.findIndex((b) => b.id === id);
+      if (idx === -1) { const e = new Error("Book not found"); e.status = 404; throw e; }
+      d.books[idx] = { ...d.books[idx], ...body };
+      save(d);
+      return d.books[idx];
+    }
+
+    if (path.match(/^\/books\/[^/]+$/) && method === "DELETE") {
+      const id = path.split("/")[2];
+      d.books = d.books.filter((b) => b.id !== id);
+      save(d);
+      return null;
+    }
+
+    if (path.match(/^\/books\/[^/]+\/borrow$/) && method === "POST") {
+      const id = path.split("/")[2];
+      const book = d.books.find((b) => b.id === id);
+      if (!book || book.available < 1) { const e = new Error("No copies available."); e.status = 400; throw e; }
+      book.available -= 1;
+      save(d);
+      return book;
+    }
+
+    if (path.match(/^\/books\/[^/]+\/return$/) && method === "POST") {
+      const id = path.split("/")[2];
+      const book = d.books.find((b) => b.id === id);
+      if (book) { book.available = Math.min(book.copies, book.available + 1); save(d); }
+      return book;
+    }
+
+    if (path === "/recommendations") {
+      const user = userFromToken();
+      const genres = user?.genres?.length ? user.genres : ["Sci-Fi"];
+      const recs = d.books.filter((b) => genres.includes(b.genre)).slice(0, 6);
+      return { items: recs.length ? recs : d.books.slice(0, 4) };
+    }
+
+    if (path === "/users/interests" && method === "GET") {
+      const user = userFromToken();
+      return { genres: user?.genres || [] };
+    }
+    if (path === "/users/interests" && method === "POST") {
+      const user = userFromToken();
+      if (user) {
+        const idx = d.users.findIndex((u) => u.id === user.id);
+        d.users[idx].genres = body.genres;
+        save(d);
+      }
+      return { genres: body.genres };
+    }
+
+    if (path === "/notifications") {
+      return { items: d.notifications };
+    }
+    if (path.match(/^\/notifications\/[^/]+\/read$/) && method === "POST") {
+      const id = path.split("/")[2];
+      const n = d.notifications.find((n) => n.id === id);
+      if (n) { n.read = true; save(d); }
+      return n;
+    }
+
+    const e = new Error(`No mock route for ${method} ${path}`);
+    e.status = 404;
+    throw e;
+  }
+
+  return { route };
+})();

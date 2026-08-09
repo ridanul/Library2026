@@ -1,0 +1,212 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Athenaeum — Sign in</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<script>
+  tailwind.config = {
+    theme: {
+      extend: {
+        colors: {
+          ink: '#1B2A4A', parchment: '#F3EDE1', parchmentDark: '#E8DFCC',
+          brass: '#B8894A', sage: '#6B7F6E', rust: '#A8442E', charcoal: '#2E2B28',
+        },
+        fontFamily: {
+          display: ['Fraunces', 'serif'],
+          mono: ['IBM Plex Mono', 'monospace'],
+        },
+      },
+    },
+  };
+</script>
+<link rel="stylesheet" href="css/styles.css" />
+</head>
+<body class="paper-texture min-h-screen flex items-center justify-center p-4">
+
+  <div class="w-full max-w-4xl grid md:grid-cols-2 bg-white/70 border border-ink/10 rounded-lg overflow-hidden shadow-xl shadow-ink/5">
+
+    <!-- Left: brand panel -->
+    <div class="hidden md:flex flex-col justify-between bg-ink text-parchment p-10 relative">
+      <div>
+        <p class="font-mono text-xs tracking-[0.2em] text-brass uppercase mb-2">Est. Reading Room</p>
+        <h1 class="font-display text-4xl leading-tight">Athenaeum<br/>Library System</h1>
+      </div>
+      <div class="stamp stamp-new border-brass text-brass w-fit">Circulation Desk</div>
+      <p class="font-mono text-xs text-parchment/60 leading-relaxed">
+        One catalog for every reader. Search the stacks, track what's checked out,
+        and get notified the moment something in your genre arrives.
+      </p>
+    </div>
+
+    <!-- Right: form panel -->
+    <div class="p-8 sm:p-10">
+      <div class="md:hidden mb-6">
+        <p class="font-mono text-xs tracking-[0.2em] text-brass uppercase mb-1">Athenaeum</p>
+        <h1 class="font-display text-2xl text-ink">Library System</h1>
+      </div>
+
+      <!-- Login / Register tabs -->
+      <div class="flex gap-1 mb-6 bg-parchmentDark rounded-md p-1 w-fit">
+        <button id="tabLogin" class="px-4 py-1.5 rounded text-sm font-medium transition">Sign in</button>
+        <button id="tabRegister" class="px-4 py-1.5 rounded text-sm font-medium transition">Register</button>
+      </div>
+
+      <!-- LOGIN FORM -->
+      <form id="loginForm" class="space-y-4">
+        <h2 class="font-display text-xl text-ink mb-1">Welcome back</h2>
+        <p class="text-sm text-charcoal/60 mb-4">Sign in to reach your shelf.</p>
+
+        <div>
+          <label class="block text-xs font-mono uppercase tracking-wide text-charcoal/60 mb-1">Email</label>
+          <input type="email" id="loginEmail" required placeholder="you@example.com"
+            class="w-full border border-ink/15 rounded px-3 py-2 bg-white focus:outline-none focus:ring-2 focus:ring-brass" />
+        </div>
+        <div>
+          <label class="block text-xs font-mono uppercase tracking-wide text-charcoal/60 mb-1">Password</label>
+          <input type="password" id="loginPassword" required placeholder="••••••••"
+            class="w-full border border-ink/15 rounded px-3 py-2 bg-white focus:outline-none focus:ring-2 focus:ring-brass" />
+        </div>
+
+        <p id="loginError" class="text-rust text-sm hidden"></p>
+
+        <button type="submit" class="w-full bg-ink text-parchment font-medium py-2.5 rounded hover:bg-ink/90 transition">
+          Sign in
+        </button>
+
+        <div class="font-mono text-[11px] text-charcoal/50 bg-parchmentDark rounded p-3 leading-relaxed">
+          Demo accounts — student@demo.io / student123 &middot; admin@demo.io / admin123
+        </div>
+      </form>
+
+      <!-- REGISTER FORM -->
+      <form id="registerForm" class="space-y-4 hidden">
+        <h2 class="font-display text-xl text-ink mb-1">Get a library card</h2>
+        <p class="text-sm text-charcoal/60 mb-4">Create an account to start borrowing.</p>
+
+        <div>
+          <label class="block text-xs font-mono uppercase tracking-wide text-charcoal/60 mb-1">Full name</label>
+          <input type="text" id="regName" required placeholder="Jordan Lee"
+            class="w-full border border-ink/15 rounded px-3 py-2 bg-white focus:outline-none focus:ring-2 focus:ring-brass" />
+        </div>
+        <div>
+          <label class="block text-xs font-mono uppercase tracking-wide text-charcoal/60 mb-1">Email</label>
+          <input type="email" id="regEmail" required placeholder="you@example.com"
+            class="w-full border border-ink/15 rounded px-3 py-2 bg-white focus:outline-none focus:ring-2 focus:ring-brass" />
+        </div>
+        <div>
+          <label class="block text-xs font-mono uppercase tracking-wide text-charcoal/60 mb-1">Password</label>
+          <input type="password" id="regPassword" required minlength="6" placeholder="At least 6 characters"
+            class="w-full border border-ink/15 rounded px-3 py-2 bg-white focus:outline-none focus:ring-2 focus:ring-brass" />
+        </div>
+
+        <!-- Student / Admin role toggle -->
+        <div>
+          <label class="block text-xs font-mono uppercase tracking-wide text-charcoal/60 mb-2">Account type</label>
+          <div class="grid grid-cols-2 gap-2" id="roleToggle">
+            <button type="button" data-role="student"
+              class="role-option border-2 border-ink rounded-md py-2.5 text-sm font-medium transition">
+              🎓 Student
+            </button>
+            <button type="button" data-role="admin"
+              class="role-option border-2 border-ink/15 rounded-md py-2.5 text-sm font-medium transition">
+              🗝️ Admin
+            </button>
+          </div>
+          <input type="hidden" id="regRole" value="student" />
+        </div>
+
+        <p id="registerError" class="text-rust text-sm hidden"></p>
+
+        <button type="submit" class="w-full bg-brass text-white font-medium py-2.5 rounded hover:bg-brass/90 transition">
+          Create account
+        </button>
+      </form>
+    </div>
+  </div>
+
+<script src="js/config.js"></script>
+<script src="js/mock.js"></script>
+<script src="js/api.js"></script>
+<script src="js/auth.js"></script>
+<script>
+  Auth.redirectIfLoggedIn();
+
+  const tabLogin = document.getElementById('tabLogin');
+  const tabRegister = document.getElementById('tabRegister');
+  const loginForm = document.getElementById('loginForm');
+  const registerForm = document.getElementById('registerForm');
+
+  function activateTab(which) {
+    const isLogin = which === 'login';
+    loginForm.classList.toggle('hidden', !isLogin);
+    registerForm.classList.toggle('hidden', isLogin);
+    tabLogin.classList.toggle('bg-white', isLogin);
+    tabLogin.classList.toggle('text-ink', isLogin);
+    tabLogin.classList.toggle('shadow-sm', isLogin);
+    tabLogin.classList.toggle('text-charcoal/50', !isLogin);
+    tabRegister.classList.toggle('bg-white', !isLogin);
+    tabRegister.classList.toggle('text-ink', !isLogin);
+    tabRegister.classList.toggle('shadow-sm', !isLogin);
+    tabRegister.classList.toggle('text-charcoal/50', isLogin);
+  }
+  tabLogin.addEventListener('click', () => activateTab('login'));
+  tabRegister.addEventListener('click', () => activateTab('register'));
+  activateTab('login');
+
+  // Role toggle
+  const roleButtons = document.querySelectorAll('.role-option');
+  roleButtons.forEach((btn) => {
+    btn.addEventListener('click', () => {
+      roleButtons.forEach((b) => {
+        b.classList.remove('border-ink', 'bg-ink', 'text-parchment');
+        b.classList.add('border-ink/15');
+      });
+      btn.classList.add('border-ink', 'bg-ink', 'text-parchment');
+      btn.classList.remove('border-ink/15');
+      document.getElementById('regRole').value = btn.dataset.role;
+    });
+  });
+  roleButtons[0].classList.add('border-ink', 'bg-ink', 'text-parchment');
+
+  // Login submit
+  loginForm.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const errEl = document.getElementById('loginError');
+    errEl.classList.add('hidden');
+    try {
+      const { token, user } = await Api.login({
+        email: document.getElementById('loginEmail').value.trim(),
+        password: document.getElementById('loginPassword').value,
+      });
+      Auth.setSession(token, user);
+      window.location.href = 'dashboard.html';
+    } catch (err) {
+      errEl.textContent = err.message || 'Could not sign in.';
+      errEl.classList.remove('hidden');
+    }
+  });
+
+  // Register submit
+  registerForm.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const errEl = document.getElementById('registerError');
+    errEl.classList.add('hidden');
+    try {
+      const { token, user } = await Api.register({
+        name: document.getElementById('regName').value.trim(),
+        email: document.getElementById('regEmail').value.trim(),
+        password: document.getElementById('regPassword').value,
+        role: document.getElementById('regRole').value,
+      });
+      Auth.setSession(token, user);
+      window.location.href = 'dashboard.html';
+    } catch (err) {
+      errEl.textContent = err.message || 'Could not create account.';
+      errEl.classList.remove('hidden');
+    }
+  });
+</script>
+</body>
+</html>
