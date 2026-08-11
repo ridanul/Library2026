@@ -4,7 +4,7 @@
 // On network failure, and only if LIB_CONFIG.DEMO_MODE_FALLBACK is true,
 // calls are routed to Mock.* so the UI stays usable without a live backend.
 // ---------------------------------------------------------------------------
-const Api = (() => {
+var Api = (() => {
   const { API_BASE, ENDPOINTS, DEMO_MODE_FALLBACK } = window.LIB_CONFIG;
 
   function authHeaders() {
@@ -71,3 +71,4 @@ const Api = (() => {
     markNotificationRead: (id) => request(ENDPOINTS.notificationRead(id), { method: "POST" }),
   };
 })();
+window.Api = Api;
