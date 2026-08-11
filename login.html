@@ -83,7 +83,7 @@
       <!-- REGISTER FORM -->
       <form id="registerForm" class="space-y-4 hidden">
         <h2 class="font-display text-xl text-ink mb-1">Get a library card</h2>
-        <p class="text-sm text-charcoal/60 mb-4">Create an account to start borrowing.</p>
+        <p class="text-sm text-charcoal/60 mb-4">Create an account to start borrowing. Student accounts must be approved by an admin before sign-in.</p>
 
         <div>
           <label class="block text-xs font-mono uppercase tracking-wide text-charcoal/60 mb-1">Full name</label>
@@ -118,6 +118,7 @@
         </div>
 
         <p id="registerError" class="text-rust text-sm hidden"></p>
+        <p id="registerNotice" class="text-sage text-sm hidden"></p>
 
         <button type="submit" class="w-full bg-brass text-white font-medium py-2.5 rounded hover:bg-brass/90 transition">
           Create account
@@ -137,6 +138,8 @@
   const tabRegister = document.getElementById('tabRegister');
   const loginForm = document.getElementById('loginForm');
   const registerForm = document.getElementById('registerForm');
+  const registerErrorEl = document.getElementById('registerError');
+  const registerNoticeEl = document.getElementById('registerNotice');
 
   function activateTab(which) {
     const isLogin = which === 'login';
@@ -191,20 +194,34 @@
   // Register submit
   registerForm.addEventListener('submit', async (e) => {
     e.preventDefault();
-    const errEl = document.getElementById('registerError');
-    errEl.classList.add('hidden');
+    registerErrorEl.classList.add('hidden');
+    registerNoticeEl.classList.add('hidden');
     try {
-      const { token, user } = await Api.register({
+      const { token, user, pendingApproval } = await Api.register({
         name: document.getElementById('regName').value.trim(),
         email: document.getElementById('regEmail').value.trim(),
         password: document.getElementById('regPassword').value,
         role: document.getElementById('regRole').value,
       });
+      if (pendingApproval) {
+        registerNoticeEl.textContent = 'Your student account is now pending admin approval. You will be able to sign in once approved.';
+        registerNoticeEl.classList.remove('hidden');
+        registerForm.reset();
+        document.getElementById('regRole').value = 'student';
+        roleButtons.forEach((btn) => {
+          btn.classList.remove('border-ink', 'bg-ink', 'text-parchment');
+          btn.classList.add('border-ink/15');
+        });
+        roleButtons[0].classList.add('border-ink', 'bg-ink', 'text-parchment');
+        activateTab('login');
+        document.getElementById('loginEmail').value = document.getElementById('regEmail').value.trim();
+        return;
+      }
       Auth.setSession(token, user);
       window.location.href = 'dashboard.html';
     } catch (err) {
-      errEl.textContent = err.message || 'Could not create account.';
-      errEl.classList.remove('hidden');
+      registerErrorEl.textContent = err.message || 'Could not create account.';
+      registerErrorEl.classList.remove('hidden');
     }
   });
 </script>

@@ -9,8 +9,8 @@ const Mock = (() => {
   function seed() {
     return {
       users: [
-        { id: "u1", name: "Priya Nair", email: "student@demo.io", password: "student123", role: "student", genres: ["Sci-Fi", "Mystery"] },
-        { id: "u2", name: "Marcus Webb", email: "admin@demo.io", password: "admin123", role: "admin", genres: [] },
+        { id: "u1", name: "Priya Nair", email: "student@demo.io", password: "student123", role: "student", status: "approved", genres: ["Sci-Fi", "Mystery"] },
+        { id: "u2", name: "Marcus Webb", email: "admin@demo.io", password: "admin123", role: "admin", status: "approved", genres: [] },
       ],
       books: [
         { id: "b1", title: "The Left Hand of Darkness", author: "Ursula K. Le Guin", isbn: "9780441478125", genre: "Sci-Fi", call_number: "SF 823.9 LEG", copies: 3, available: 2, cover_url: "", description: "A envoy navigates a wintry planet where inhabitants have no fixed gender.", added_at: "2026-07-28" },
@@ -25,6 +25,9 @@ const Mock = (() => {
         { id: "n2", title: "New arrival in Fantasy", body: "Piranesi by Susanna Clarke is now available.", read: false, created_at: "2026-08-02" },
         { id: "n3", title: "Reminder", body: "Gone Girl is fully checked out — you're 2nd in line.", read: true, created_at: "2026-07-30" },
       ],
+      loans: [
+        { id: "loan1", userId: "u1", userName: "Priya Nair", bookId: "b1", bookTitle: "The Left Hand of Darkness", borrowed_at: "2026-07-28", due_date: "2026-08-01", returned: false },
+      ],
       session: null, // {userId}
     };
   }
@@ -33,6 +36,24 @@ const Mock = (() => {
     let d = JSON.parse(localStorage.getItem(DB_KEY) || "null");
     if (!d) {
       d = seed();
+      localStorage.setItem(DB_KEY, JSON.stringify(d));
+      return d;
+    }
+
+    const changed = [];
+    if (!Array.isArray(d.users)) { d.users = []; changed.push("users"); }
+    if (!Array.isArray(d.books)) { d.books = []; changed.push("books"); }
+    if (!Array.isArray(d.notifications)) { d.notifications = []; changed.push("notifications"); }
+    if (!Array.isArray(d.loans)) { d.loans = []; changed.push("loans"); }
+
+    d.users = d.users.map((u) => ({
+      ...u,
+      role: u.role || "student",
+      status: u.status || (u.role === "admin" ? "approved" : "approved"),
+      genres: Array.isArray(u.genres) ? u.genres : [],
+    }));
+
+    if (changed.length) {
       localStorage.setItem(DB_KEY, JSON.stringify(d));
     }
     return d;
@@ -49,7 +70,7 @@ const Mock = (() => {
     return db().users.find((u) => u.id === id) || null;
   }
   function publicUser(u) {
-    return { id: u.id, name: u.name, email: u.email, role: u.role, genres: u.genres };
+    return { id: u.id, name: u.name, email: u.email, role: u.role, status: u.status, genres: u.genres };
   }
   function delay(ms = 350) {
     return new Promise((r) => setTimeout(r, ms));
@@ -65,10 +86,23 @@ const Mock = (() => {
         e.status = 409;
         throw e;
       }
-      const user = { id: `u${Date.now()}`, name: body.name, email: body.email, password: body.password, role: body.role || "student", genres: [] };
+      const role = body.role || "student";
+      const user = {
+        id: `u${Date.now()}`,
+        name: body.name,
+        email: body.email,
+        password: body.password,
+        role,
+        status: role === "admin" ? "approved" : "pending",
+        genres: [],
+      };
       d.users.push(user);
       save(d);
-      return { token: token(user.id), user: publicUser(user) };
+      return {
+        token: role === "admin" ? token(user.id) : null,
+        user: publicUser(user),
+        pendingApproval: role === "student",
+      };
     }
 
     if (path === "/auth/login" && method === "POST") {
@@ -78,6 +112,11 @@ const Mock = (() => {
         e.status = 401;
         throw e;
       }
+      if (user.role === "student" && user.status !== "approved") {
+        const e = new Error("Your account is pending admin approval.");
+        e.status = 403;
+        throw e;
+      }
       return { token: token(user.id), user: publicUser(user) };
     }
 
@@ -85,6 +124,24 @@ const Mock = (() => {
       const user = userFromToken();
       if (!user) { const e = new Error("Not authenticated"); e.status = 401; throw e; }
       return { user: publicUser(user) };
+    }
+
+    if (path === "/admin/users/pending" && method === "GET") {
+      return { items: d.users.filter((u) => u.role === "student" && u.status === "pending") };
+    }
+
+    if (path.match(/^\/admin\/users\/[^/]+\/approve$/) && method === "POST") {
+      const id = path.split("/")[3];
+      const user = d.users.find((u) => u.id === id);
+      if (!user) { const e = new Error("User not found"); e.status = 404; throw e; }
+      user.status = "approved";
+      save(d);
+      return { user: publicUser(user) };
+    }
+
+    if (path === "/admin/overdue" && method === "GET") {
+      const today = new Date().toISOString().slice(0, 10);
+      return { items: d.loans.filter((loan) => !loan.returned && loan.due_date < today) };
     }
 
     if (path.startsWith("/books") && method === "GET") {
@@ -142,7 +199,22 @@ const Mock = (() => {
       const id = path.split("/")[2];
       const book = d.books.find((b) => b.id === id);
       if (!book || book.available < 1) { const e = new Error("No copies available."); e.status = 400; throw e; }
+      const user = userFromToken();
+      if (!user) { const e = new Error("Not authenticated"); e.status = 401; throw e; }
       book.available -= 1;
+      const today = new Date().toISOString().slice(0, 10);
+      const due = new Date();
+      due.setDate(due.getDate() + 7);
+      d.loans.push({
+        id: `loan${Date.now()}`,
+        userId: user.id,
+        userName: user.name,
+        bookId: id,
+        bookTitle: book.title,
+        borrowed_at: today,
+        due_date: due.toISOString().slice(0, 10),
+        returned: false,
+      });
       save(d);
       return book;
     }
@@ -150,7 +222,10 @@ const Mock = (() => {
     if (path.match(/^\/books\/[^/]+\/return$/) && method === "POST") {
       const id = path.split("/")[2];
       const book = d.books.find((b) => b.id === id);
-      if (book) { book.available = Math.min(book.copies, book.available + 1); save(d); }
+      if (book) { book.available = Math.min(book.copies, book.available + 1); }
+      const loan = d.loans.find((entry) => entry.bookId === id && !entry.returned);
+      if (loan) { loan.returned = true; }
+      save(d);
       return book;
     }
 

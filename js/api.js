@@ -64,6 +64,9 @@ const Api = (() => {
     getRecommendations: () => request(ENDPOINTS.recommendations),
     getInterests: () => request(ENDPOINTS.interests),
     setInterests: (genres) => request(ENDPOINTS.interests, { method: "POST", body: { genres } }),
+    listPendingUsers: () => request("/admin/users/pending"),
+    approveUser: (id) => request(`/admin/users/${id}/approve`, { method: "POST" }),
+    getOverdueLoans: () => request("/admin/overdue"),
     getNotifications: () => request(ENDPOINTS.notifications),
     markNotificationRead: (id) => request(ENDPOINTS.notificationRead(id), { method: "POST" }),
   };

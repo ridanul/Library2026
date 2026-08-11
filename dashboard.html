@@ -137,6 +137,23 @@
           <tbody id="manageTableBody"></tbody>
         </table>
       </div>
+
+      <div class="grid lg:grid-cols-2 gap-6 mt-8">
+        <div class="border border-ink/10 rounded-lg bg-white/70 p-5">
+          <div class="flex items-center justify-between mb-4">
+            <h2 class="font-display text-xl text-ink">Pending student approvals</h2>
+            <span id="pendingCount" class="stamp stamp-new border-brass text-brass text-[10px]">0</span>
+          </div>
+          <div id="pendingUsersList" class="space-y-2"></div>
+        </div>
+        <div class="border border-ink/10 rounded-lg bg-white/70 p-5">
+          <div class="flex items-center justify-between mb-4">
+            <h2 class="font-display text-xl text-ink">Overdue / unreturned books</h2>
+            <span id="overdueCount" class="stamp stamp-out text-[10px]">0</span>
+          </div>
+          <div id="overdueList" class="space-y-2"></div>
+        </div>
+      </div>
     </section>
   </main>
 

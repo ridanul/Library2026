@@ -15,7 +15,8 @@ const Auth = {
     localStorage.removeItem("lib_user");
   },
   isLoggedIn() {
-    return !!localStorage.getItem("lib_token");
+    const token = localStorage.getItem("lib_token");
+    return !!token && token !== "null";
   },
   isAdmin() {
     return this.getUser()?.role === "admin";

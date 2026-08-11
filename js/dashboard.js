@@ -310,7 +310,52 @@ async function loadManageTable() {
         loadBooks();
       })
     );
+    loadAdminPanels();
   } catch (err) {
     toast(err.message || "Could not load the collection.");
+  }
+}
+
+async function loadAdminPanels() {
+  try {
+    const [{ items: pendingUsers }, { items: overdueLoans }] = await Promise.all([
+      Api.listPendingUsers(),
+      Api.getOverdueLoans(),
+    ]);
+
+    document.getElementById("pendingCount").textContent = pendingUsers.length;
+    document.getElementById("overdueCount").textContent = overdueLoans.length;
+
+    const pendingList = document.getElementById("pendingUsersList");
+    pendingList.innerHTML = pendingUsers.length
+      ? pendingUsers.map((user) => `
+        <div class="flex items-center justify-between gap-3 rounded border border-ink/10 bg-parchment/60 p-3">
+          <div>
+            <p class="font-medium text-ink">${escapeHtml(user.name)}</p>
+            <p class="text-xs font-mono text-charcoal/50">${escapeHtml(user.email)}</p>
+          </div>
+          <button data-approve="${user.id}" class="text-xs font-mono bg-ink text-parchment px-3 py-1.5 rounded hover:bg-ink/90">Approve</button>
+        </div>`).join("")
+      : `<p class="text-sm text-charcoal/50">No student applications are waiting.</p>`;
+
+    pendingList.querySelectorAll("[data-approve]").forEach((btn) => {
+      btn.addEventListener("click", async () => {
+        await Api.approveUser(btn.dataset.approve);
+        toast("Student approved.");
+        loadAdminPanels();
+      });
+    });
+
+    const overdueList = document.getElementById("overdueList");
+    overdueList.innerHTML = overdueLoans.length
+      ? overdueLoans.map((loan) => `
+        <div class="rounded border border-rust/20 bg-rust/5 p-3">
+          <p class="font-medium text-ink">${escapeHtml(loan.userName)} — ${escapeHtml(loan.bookTitle)}</p>
+          <p class="text-xs font-mono text-charcoal/50">Due ${escapeHtml(loan.due_date)} · not returned</p>
+        </div>`).join("")
+      : `<p class="text-sm text-charcoal/50">No overdue loans right now.</p>`;
+  } catch (err) {
+    document.getElementById("pendingUsersList").innerHTML = `<p class="text-sm text-rust">${escapeHtml(err.message || "Could not load admin panels.")}</p>`;
+    document.getElementById("overdueList").innerHTML = "";
   }
 }
