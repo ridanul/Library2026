@@ -4,7 +4,7 @@
 // so the frontend can be reviewed/demoed on its own.
 // ---------------------------------------------------------------------------
 window.LIB_CONFIG = {
-  API_BASE: "http://api.has-ib.dev/api",
+  API_BASE: "https://api.has-ib.dev/api",
   DEMO_MODE_FALLBACK: true, // auto-use mock data if the API can't be reached
   ENDPOINTS: {
     register: "/auth/register",          // POST  {name,email,password,role}
