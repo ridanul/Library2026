@@ -5,6 +5,9 @@
 // calls are routed to Mock.* so the UI stays usable without a live backend.
 // ---------------------------------------------------------------------------
 var Api = (() => {
+  if (!window.LIB_CONFIG) {
+    throw new Error('Missing LIB_CONFIG: please load js/config.js before js/api.js.');
+  }
   const { API_BASE, ENDPOINTS, DEMO_MODE_FALLBACK } = window.LIB_CONFIG;
 
   function authHeaders() {
