@@ -93,23 +93,24 @@ const Mock = (() => {
         email: body.email,
         password: body.password,
         role,
-        status: role === "admin" ? "approved" : "pending",
+        status: "approved",
         email_verified: false,
         genres: [],
       };
       d.users.push(user);
       save(d);
-      // Require email verification before issuing a token. Keep admin approval flow separate.
-      return { pendingVerification: true, pendingApproval: role === "student" };
+      return { pendingVerification: true };
     }
 
     if (path === "/auth/verify" && method === "POST") {
       const user = d.users.find((u) => u.email === body.email);
       if (!user) { const e = new Error("User not found"); e.status = 404; throw e; }
-      // Accept any code in mock; mark email verified.
       user.email_verified = true;
+      if (user.role === "student") {
+        user.status = "pending";
+      }
       save(d);
-      return { status: "ok" };
+      return { status: "ok", pendingApproval: user.role === "student" };
     }
 
     if (path === "/auth/resend-verification" && method === "POST") {
@@ -124,6 +125,11 @@ const Mock = (() => {
       if (!user) {
         const e = new Error("Incorrect email or password.");
         e.status = 401;
+        throw e;
+      }
+      if (!user.email_verified) {
+        const e = new Error("Email not verified. Please verify your email before signing in.");
+        e.status = 403;
         throw e;
       }
       if (user.role === "student" && user.status !== "approved") {

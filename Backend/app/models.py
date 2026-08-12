@@ -19,6 +19,7 @@ class User(Base):
     email = Column(String, unique=True, index=True, nullable=False)
     hashed_password = Column(String, nullable=False)
     role = Column(String, nullable=False, default="student")  # "student" | "admin"
+    status = Column(String, nullable=False, default="approved")  # "pending" | "approved"
     genres = Column(String, default="")  # comma-separated interest genres
     email_verified = Column(Boolean, default=False)
 

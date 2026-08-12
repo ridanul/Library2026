@@ -11,7 +11,7 @@ from sqlalchemy import or_
 
 from . import models, schemas, seed
 from .email_utils import send_verification_email
-from .database import Base, engine, get_db
+from .database import Base, engine, ensure_schema, get_db
 from .auth import (
     hash_password, verify_password, create_access_token,
     get_current_user, require_admin,
@@ -33,12 +33,20 @@ app.add_middleware(
 
 @app.on_event("startup")
 def on_startup():
+    ensure_schema()
     db = next(get_db())
     seed.run(db)
 
 
 def user_out(u: models.User) -> schemas.UserOut:
-    return schemas.UserOut(id=u.id, name=u.name, email=u.email, role=u.role, genres=u.genre_list())
+    return schemas.UserOut(
+        id=u.id,
+        name=u.name,
+        email=u.email,
+        role=u.role,
+        status=getattr(u, "status", "approved"),
+        genres=u.genre_list(),
+    )
 
 
 def book_out(b: models.Book) -> schemas.BookOut:
@@ -61,6 +69,7 @@ def register(payload: schemas.RegisterIn, db: Session = Depends(get_db)):
         email=payload.email,
         hashed_password=hash_password(payload.password),
         role=payload.role,
+        status="approved" if payload.role == "admin" else "pending",
         genres="",
     )
     db.add(user)
@@ -78,8 +87,8 @@ def register(payload: schemas.RegisterIn, db: Session = Depends(get_db)):
         send_verification_email(user.email, code)
     except Exception:
         pass
-    # Do not auto-issue a token until the user verifies their email.
-    return {"pendingVerification": True}
+    # Email verification is required; students remain pending until an admin approves them.
+    return {"pendingVerification": True, "pendingApproval": user.role == "student"}
 
 
 @app.post("/api/auth/verify")
@@ -101,7 +110,7 @@ def verify_email(payload: schemas.VerifyIn, db: Session = Depends(get_db)):
     user.email_verified = True
     db.delete(ev)
     db.commit()
-    return {"status": "ok"}
+    return {"status": "ok", "pendingApproval": user.role == "student" and user.status == "pending"}
 
 
 @app.post("/api/auth/resend-verification")
@@ -129,6 +138,8 @@ def login(payload: schemas.LoginIn, db: Session = Depends(get_db)):
         raise HTTPException(status_code=401, detail="Incorrect email or password.")
     if not getattr(user, 'email_verified', False):
         raise HTTPException(status_code=403, detail="Email not verified. Please verify your email before signing in.")
+    if user.role == "student" and getattr(user, 'status', 'approved') != "approved":
+        raise HTTPException(status_code=403, detail="Your account is pending admin approval.")
     token = create_access_token(user.id)
     return schemas.TokenOut(token=token, user=user_out(user))
 
@@ -136,6 +147,34 @@ def login(payload: schemas.LoginIn, db: Session = Depends(get_db)):
 @app.get("/api/auth/me", response_model=schemas.UserOut)
 def me(current_user: models.User = Depends(get_current_user)):
     return user_out(current_user)
+
+
+# ===========================================================================
+# Admin approval flow
+# ===========================================================================
+@app.get("/api/admin/users/pending")
+def list_pending_users(db: Session = Depends(get_db), admin: models.User = Depends(require_admin)):
+    users = (
+        db.query(models.User)
+        .filter(models.User.role == "student", models.User.status == "pending")
+        .order_by(models.User.name.asc())
+        .all()
+    )
+    return {"items": [user_out(u) for u in users]}
+
+
+@app.post("/api/admin/users/{user_id}/approve")
+def approve_user(user_id: str, db: Session = Depends(get_db), admin: models.User = Depends(require_admin)):
+    user = db.query(models.User).filter(models.User.id == user_id).first()
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found.")
+    if user.role != "student":
+        raise HTTPException(status_code=400, detail="Only student accounts can be approved.")
+    if not user.email_verified:
+        raise HTTPException(status_code=400, detail="User must verify their email before admin approval.")
+    user.status = "approved"
+    db.commit()
+    return {"status": "approved", "user": user_out(user)}
 
 
 # ===========================================================================

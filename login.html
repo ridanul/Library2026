@@ -226,11 +226,10 @@
         password: document.getElementById('regPassword').value,
         role: document.getElementById('regRole').value,
       });
-      // If verification is required, handle it first (even when admin approval is also needed).
+      // Email verification required for all new accounts.
       if (resp.pendingVerification) {
         registerNoticeEl.textContent = 'A verification code has been sent to your email. Enter it to complete registration.';
         registerNoticeEl.classList.remove('hidden');
-        // Prompt for code (simple flow). You can replace with a proper UI later.
         const code = window.prompt('Enter the verification code sent to your email:');
         if (!code) {
           registerErrorEl.textContent = 'Verification was not completed.';
@@ -238,10 +237,9 @@
           return;
         }
         try {
-          await Api.verifyEmail({ email: document.getElementById('regEmail').value.trim(), code });
-          // After verification, if account also needs admin approval, show notice and return.
-          if (resp.pendingApproval) {
-            registerNoticeEl.textContent = 'Your student account is now pending admin approval. You will be able to sign in once approved.';
+          const verifyResp = await Api.verifyEmail({ email: document.getElementById('regEmail').value.trim(), code });
+          if (verifyResp.pendingApproval) {
+            registerNoticeEl.textContent = 'Your email is verified. An admin must approve your student account before you can sign in.';
             registerNoticeEl.classList.remove('hidden');
             registerForm.reset();
             document.getElementById('regRole').value = 'student';
@@ -254,50 +252,6 @@
             document.getElementById('loginEmail').value = document.getElementById('regEmail').value.trim();
             return;
           }
-          // Verified and no admin approval required — log in.
-          const { token, user } = await Api.login({
-            email: document.getElementById('regEmail').value.trim(),
-            password: document.getElementById('regPassword').value,
-          });
-          Auth.setSession(token, user);
-          window.location.href = 'dashboard.html';
-        } catch (vErr) {
-          registerErrorEl.textContent = vErr.message || 'Verification failed.';
-          registerErrorEl.classList.remove('hidden');
-        }
-        return;
-      }
-
-      // Admin approval flow unchanged
-      if (resp.pendingApproval) {
-        registerNoticeEl.textContent = 'Your student account is now pending admin approval. You will be able to sign in once approved.';
-        registerNoticeEl.classList.remove('hidden');
-        registerForm.reset();
-        document.getElementById('regRole').value = 'student';
-        roleButtons.forEach((btn) => {
-          btn.classList.remove('border-ink', 'bg-ink', 'text-parchment');
-          btn.classList.add('border-ink/15');
-        });
-        roleButtons[0].classList.add('border-ink', 'bg-ink', 'text-parchment');
-        activateTab('login');
-        document.getElementById('loginEmail').value = document.getElementById('regEmail').value.trim();
-        return;
-      }
-
-      // Email verification required
-      if (resp.pendingVerification) {
-        registerNoticeEl.textContent = 'A verification code has been sent to your email. Enter it to complete registration.';
-        registerNoticeEl.classList.remove('hidden');
-        // Prompt for code (simple flow). You can replace with a proper UI later.
-        const code = window.prompt('Enter the verification code sent to your email:');
-        if (!code) {
-          registerErrorEl.textContent = 'Verification was not completed.';
-          registerErrorEl.classList.remove('hidden');
-          return;
-        }
-        try {
-          await Api.verifyEmail({ email: document.getElementById('regEmail').value.trim(), code });
-          // Verified — now log in and set session
           const { token, user } = await Api.login({
             email: document.getElementById('regEmail').value.trim(),
             password: document.getElementById('regPassword').value,

@@ -31,6 +31,7 @@ class UserOut(BaseModel):
     name: str
     email: EmailStr
     role: str
+    status: str = "approved"
     genres: List[str] = []
 
     class Config:
