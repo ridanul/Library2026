@@ -16,6 +16,9 @@ var Api = (() => {
   }
 
   async function request(path, { method = "GET", body, auth = true } = {}) {
+    if (!API_BASE && DEMO_MODE_FALLBACK) {
+      return Mock.route(path, method, body);
+    }
     const url = `${API_BASE}${path}`;
     try {
       const res = await fetch(url, {
