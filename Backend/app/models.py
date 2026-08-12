@@ -20,6 +20,7 @@ class User(Base):
     hashed_password = Column(String, nullable=False)
     role = Column(String, nullable=False, default="student")  # "student" | "admin"
     genres = Column(String, default="")  # comma-separated interest genres
+    email_verified = Column(Boolean, default=False)
 
     borrows = relationship("Borrow", back_populates="user")
     notifications = relationship("Notification", back_populates="user")
@@ -70,3 +71,15 @@ class Notification(Base):
     created_at = Column(Date, default=date.today)
 
     user = relationship("User", back_populates="notifications")
+
+
+class EmailVerification(Base):
+    __tablename__ = "email_verifications"
+
+    id = Column(String, primary_key=True, default=lambda: gen_id("ev"))
+    user_id = Column(String, ForeignKey("users.id"), nullable=False)
+    code = Column(String, nullable=False)
+    expires_at = Column(String, nullable=False)
+    created_at = Column(Date, default=date.today)
+
+    user = relationship("User")

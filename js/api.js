@@ -27,8 +27,10 @@ var Api = (() => {
         body: body ? JSON.stringify(body) : undefined,
       });
       if (!res.ok) {
-        const err = await res.json().catch(() => ({}));
-        throw new ApiError(err.detail || `Request failed (${res.status})`, res.status);
+        const errBody = await res.json().catch(() => ({}));
+        const rawMsg = errBody.detail ?? errBody.message ?? errBody ?? `Request failed (${res.status})`;
+        const msg = typeof rawMsg === 'string' ? rawMsg : JSON.stringify(rawMsg);
+        throw new ApiError(msg, res.status);
       }
       if (res.status === 204) return null;
       return res.json();
@@ -45,7 +47,8 @@ var Api = (() => {
 
   class ApiError extends Error {
     constructor(message, status) {
-      super(message);
+      const m = typeof message === 'string' ? message : (typeof message === 'object' ? JSON.stringify(message) : String(message));
+      super(m);
       this.status = status;
     }
   }
@@ -54,6 +57,8 @@ var Api = (() => {
     ApiError,
     register: (data) => request(ENDPOINTS.register, { method: "POST", body: data, auth: false }),
     login: (data) => request(ENDPOINTS.login, { method: "POST", body: data, auth: false }),
+    verifyEmail: (data) => request("/auth/verify", { method: "POST", body: data, auth: false }),
+    resendVerification: (data) => request("/auth/resend-verification", { method: "POST", body: data, auth: false }),
     me: () => request(ENDPOINTS.me),
     listBooks: (params = {}) => {
       const qs = new URLSearchParams(params).toString();

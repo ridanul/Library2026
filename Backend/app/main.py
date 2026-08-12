@@ -10,6 +10,7 @@ from sqlalchemy.orm import Session
 from sqlalchemy import or_
 
 from . import models, schemas, seed
+from .email_utils import send_verification_email
 from .database import Base, engine, get_db
 from .auth import (
     hash_password, verify_password, create_access_token,
@@ -51,7 +52,7 @@ def book_out(b: models.Book) -> schemas.BookOut:
 # ===========================================================================
 # Auth
 # ===========================================================================
-@app.post("/api/auth/register", response_model=schemas.TokenOut)
+@app.post("/api/auth/register")
 def register(payload: schemas.RegisterIn, db: Session = Depends(get_db)):
     if db.query(models.User).filter(models.User.email == payload.email).first():
         raise HTTPException(status_code=409, detail="An account with that email already exists.")
@@ -65,8 +66,60 @@ def register(payload: schemas.RegisterIn, db: Session = Depends(get_db)):
     db.add(user)
     db.commit()
     db.refresh(user)
-    token = create_access_token(user.id)
-    return schemas.TokenOut(token=token, user=user_out(user))
+    # Create a verification code and send email
+    from datetime import datetime, timedelta
+    code = f"{__import__('random').randint(100000,999999)}"
+    expires = (datetime.utcnow() + timedelta(minutes=15)).isoformat()
+    ev = models.EmailVerification(user_id=user.id, code=code, expires_at=expires)
+    db.add(ev)
+    db.commit()
+    # send email (best-effort)
+    try:
+        send_verification_email(user.email, code)
+    except Exception:
+        pass
+    # Do not auto-issue a token until the user verifies their email.
+    return {"pendingVerification": True}
+
+
+@app.post("/api/auth/verify")
+def verify_email(payload: schemas.VerifyIn, db: Session = Depends(get_db)):
+    user = db.query(models.User).filter(models.User.email == payload.email).first()
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found.")
+    ev = (
+        db.query(models.EmailVerification)
+        .filter(models.EmailVerification.user_id == user.id, models.EmailVerification.code == payload.code)
+        .order_by(models.EmailVerification.created_at.desc())
+        .first()
+    )
+    if not ev:
+        raise HTTPException(status_code=400, detail="Invalid verification code.")
+    from datetime import datetime
+    if datetime.utcnow().isoformat() > ev.expires_at:
+        raise HTTPException(status_code=400, detail="Verification code expired.")
+    user.email_verified = True
+    db.delete(ev)
+    db.commit()
+    return {"status": "ok"}
+
+
+@app.post("/api/auth/resend-verification")
+def resend_verification(payload: schemas.ResendVerifyIn, db: Session = Depends(get_db)):
+    user = db.query(models.User).filter(models.User.email == payload.email).first()
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found.")
+    from datetime import datetime, timedelta
+    code = f"{__import__('random').randint(100000,999999)}"
+    expires = (datetime.utcnow() + timedelta(minutes=15)).isoformat()
+    ev = models.EmailVerification(user_id=user.id, code=code, expires_at=expires)
+    db.add(ev)
+    db.commit()
+    try:
+        send_verification_email(user.email, code)
+    except Exception:
+        pass
+    return {"status": "ok"}
 
 
 @app.post("/api/auth/login", response_model=schemas.TokenOut)
@@ -74,6 +127,8 @@ def login(payload: schemas.LoginIn, db: Session = Depends(get_db)):
     user = db.query(models.User).filter(models.User.email == payload.email).first()
     if not user or not verify_password(payload.password, user.hashed_password):
         raise HTTPException(status_code=401, detail="Incorrect email or password.")
+    if not getattr(user, 'email_verified', False):
+        raise HTTPException(status_code=403, detail="Email not verified. Please verify your email before signing in.")
     token = create_access_token(user.id)
     return schemas.TokenOut(token=token, user=user_out(user))
 

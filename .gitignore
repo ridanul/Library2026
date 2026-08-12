@@ -1,0 +1,19 @@
+.env
+Backend/.env
+Backend/.env.local
+# SMTP credential files
+smtp_credentials.env
+Backend/smtp_credentials.env
+
+# Python cache
+__pycache__/
+*.py[cod]
+
+# SQLite DB
+*.db
+
+# VSCode
+.vscode/
+
+# Node
+node_modules/

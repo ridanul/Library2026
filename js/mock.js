@@ -9,8 +9,8 @@ const Mock = (() => {
   function seed() {
     return {
       users: [
-        { id: "u1", name: "Priya Nair", email: "student@demo.io", password: "student123", role: "student", status: "approved", genres: ["Sci-Fi", "Mystery"] },
-        { id: "u2", name: "Marcus Webb", email: "admin@demo.io", password: "admin123", role: "admin", status: "approved", genres: [] },
+        { id: "u1", name: "Priya Nair", email: "student@demo.io", password: "student123", role: "student", status: "approved", email_verified: true, genres: ["Sci-Fi", "Mystery"] },
+        { id: "u2", name: "Marcus Webb", email: "admin@demo.io", password: "admin123", role: "admin", status: "approved", email_verified: true, genres: [] },
       ],
       books: [
         { id: "b1", title: "The Left Hand of Darkness", author: "Ursula K. Le Guin", isbn: "9780441478125", genre: "Sci-Fi", call_number: "SF 823.9 LEG", copies: 3, available: 2, cover_url: "", description: "A envoy navigates a wintry planet where inhabitants have no fixed gender.", added_at: "2026-07-28" },
@@ -94,15 +94,29 @@ const Mock = (() => {
         password: body.password,
         role,
         status: role === "admin" ? "approved" : "pending",
+        email_verified: false,
         genres: [],
       };
       d.users.push(user);
       save(d);
-      return {
-        token: role === "admin" ? token(user.id) : null,
-        user: publicUser(user),
-        pendingApproval: role === "student",
-      };
+      // Require email verification before issuing a token. Keep admin approval flow separate.
+      return { pendingVerification: true, pendingApproval: role === "student" };
+    }
+
+    if (path === "/auth/verify" && method === "POST") {
+      const user = d.users.find((u) => u.email === body.email);
+      if (!user) { const e = new Error("User not found"); e.status = 404; throw e; }
+      // Accept any code in mock; mark email verified.
+      user.email_verified = true;
+      save(d);
+      return { status: "ok" };
+    }
+
+    if (path === "/auth/resend-verification" && method === "POST") {
+      const user = d.users.find((u) => u.email === body.email);
+      if (!user) { const e = new Error("User not found"); e.status = 404; throw e; }
+      // no-op in mock
+      return { status: "ok" };
     }
 
     if (path === "/auth/login" && method === "POST") {

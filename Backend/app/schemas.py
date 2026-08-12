@@ -12,6 +12,15 @@ class RegisterIn(BaseModel):
     role: Literal["student", "admin"] = "student"
 
 
+class VerifyIn(BaseModel):
+    email: EmailStr
+    code: str
+
+
+class ResendVerifyIn(BaseModel):
+    email: EmailStr
+
+
 class LoginIn(BaseModel):
     email: EmailStr
     password: str
