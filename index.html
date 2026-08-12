@@ -3,10 +3,93 @@
 <head>
 <meta charset="UTF-8" />
 <title>KiU Library System</title>
+<style>
+#sleep-overlay{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;background:#f8f9fa;color:#222;font-family:system-ui,-apple-system,Segoe UI,Roboto,'Helvetica Neue',Arial;z-index:1000;padding:20px}
+#sleep-box{background:#fff;border:1px solid #e6e9ee;padding:22px;border-radius:10px;max-width:520px;text-align:center;box-shadow:0 8px 30px rgba(10,20,30,0.06)}
+#countdown{font-weight:700;font-size:1.6rem;margin-top:8px}
+</style>
 </head>
 <body>
 <script>
-  window.location.href = localStorage.getItem("lib_token") ? "dashboard.html" : "login.html";
+(function(){
+	const target = localStorage.getItem("lib_token") ? "dashboard.html" : "login.html";
+	const RAW_HEALTH = "api.has-ib.dev/api/health"; // user-provided value — may be host-only or full URL
+	const RETRY_SECONDS = 20; // countdown duration when render/backend appears to be sleeping
+
+	const HEALTH_URLS = (()=>{
+		const u = RAW_HEALTH && RAW_HEALTH.trim();
+		const urls = [];
+		if(u){
+			if(u.startsWith('http://') || u.startsWith('https://') || u.startsWith('//')){
+				urls.push(u);
+			}else{
+				urls.push(u); // try as-provided (may be relative)
+				urls.push('https://' + u);
+				urls.push('http://' + u);
+			}
+		}
+		// always try local origin fallback
+		urls.push(window.location.origin + '/api/health');
+		// dedupe while preserving order
+		return [...new Set(urls)];
+	})();
+
+	function showOverlay(seconds){
+		if(document.getElementById('sleep-overlay')) return;
+		const ov = document.createElement('div');
+		ov.id = 'sleep-overlay';
+		ov.innerHTML = `
+			<div id="sleep-box">
+				<div style="font-size:1.05rem">Waking the backend service…</div>
+				<div id="countdown">${seconds}</div>
+				<div style="margin-top:12px;color:#666">We'll try again automatically.</div>
+			</div>`;
+		document.body.appendChild(ov);
+	}
+
+	function updateCountdown(n){
+		const el = document.getElementById('countdown');
+		if(el) el.textContent = n;
+	}
+
+	async function checkHealth(){
+			for(const url of HEALTH_URLS){
+				try{
+					const resp = await fetch(url, {cache: 'no-store'});
+					if(resp && resp.ok){
+						window.location.href = target;
+						return true;
+					}
+				}catch(e){
+					// try next URL
+					console.debug('health check failed for', url, e && e.message ? e.message : e);
+				}
+			}
+			return false;
+	}
+
+	async function pollUntilReady(){
+		if(await checkHealth()) return;
+		let seconds = RETRY_SECONDS;
+		showOverlay(seconds);
+		const tick = setInterval(()=>{
+			seconds = Math.max(0, seconds - 1);
+			updateCountdown(seconds);
+		}, 1000);
+
+		while(true){
+			await new Promise(r=>setTimeout(r, RETRY_SECONDS * 1000));
+			if(await checkHealth()){
+				clearInterval(tick);
+				return;
+			}
+			seconds = RETRY_SECONDS;
+			updateCountdown(seconds);
+		}
+	}
+
+	pollUntilReady();
+})();
 </script>
 </body>
 </html>
