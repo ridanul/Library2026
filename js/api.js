@@ -78,6 +78,15 @@ var Api = (() => {
     listPendingUsers: () => request("/admin/users/pending"),
     approveUser: (id) => request(`/admin/users/${id}/approve`, { method: "POST" }),
     getOverdueLoans: () => request("/admin/overdue"),
+    chargeFine: (userId, data) => request(`/admin/users/${userId}/fine`, { method: "POST", body: data }),
+    getBook: (id) => request(ENDPOINTS.book(id)),
+    getAdminSettings: () => request("/admin/settings"),
+    putAdminSettings: (data) => request("/admin/settings", { method: "PUT", body: data }),
+    // fines
+    getFines: () => request("/fines"),
+    getAllFines: () => request("/admin/fines"),
+    createFine: (userId, data) => request(`/admin/users/${userId}/fines`, { method: "POST", body: data }),
+    payFine: (fineId) => request(`/fines/${fineId}/pay`, { method: "POST", body: {} }),
     getNotifications: () => request(ENDPOINTS.notifications),
     markNotificationRead: (id) => request(ENDPOINTS.notificationRead(id), { method: "POST" }),
   };

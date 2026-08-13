@@ -57,6 +57,21 @@ def book_out(b: models.Book) -> schemas.BookOut:
     )
 
 
+def get_setting(db: Session, key: str, default: str) -> str:
+    s = db.query(models.AppSetting).filter(models.AppSetting.key == key).first()
+    return s.value if s else default
+
+
+def set_setting(db: Session, key: str, value: str):
+    s = db.query(models.AppSetting).filter(models.AppSetting.key == key).first()
+    if s:
+        s.value = value
+    else:
+        s = models.AppSetting(key=key, value=value)
+        db.add(s)
+    db.commit()
+
+
 # ===========================================================================
 # Auth
 # ===========================================================================
@@ -175,6 +190,116 @@ def approve_user(user_id: str, db: Session = Depends(get_db), admin: models.User
     user.status = "approved"
     db.commit()
     return {"status": "approved", "user": user_out(user)}
+
+
+# Admin: overdue loans + settings
+@app.get("/api/admin/overdue")
+def list_overdue(db: Session = Depends(get_db), admin: models.User = Depends(require_admin)):
+    from datetime import date, timedelta
+    grace_days = int(get_setting(db, "grace_days", "14"))
+    fine_per_day = float(get_setting(db, "fine_per_day", "0.5"))
+    items = []
+    borrows = db.query(models.Borrow).filter(models.Borrow.returned_at.is_(None)).all()
+    for br in borrows:
+        due = br.borrowed_at + timedelta(days=grace_days)
+        if date.today() > due:
+            days_over = (date.today() - due).days
+            fine = round(days_over * fine_per_day, 2)
+            items.append({
+                "id": br.id,
+                "userId": br.user_id,
+                "userName": br.user.name,
+                "bookId": br.book_id,
+                "bookTitle": br.book.title,
+                "borrowed_at": br.borrowed_at,
+                "due_date": due,
+                "days_overdue": days_over,
+                "fine": fine,
+            })
+    return {"items": items}
+
+
+@app.get("/api/admin/settings")
+def get_admin_settings(db: Session = Depends(get_db), admin: models.User = Depends(require_admin)):
+    return {
+        "fine_per_day": float(get_setting(db, "fine_per_day", "0.5")),
+        "grace_days": int(get_setting(db, "grace_days", "14")),
+    }
+
+
+@app.put("/api/admin/settings")
+def put_admin_settings(payload: dict, db: Session = Depends(get_db), admin: models.User = Depends(require_admin)):
+    if "fine_per_day" in payload:
+        set_setting(db, "fine_per_day", str(float(payload["fine_per_day"])))
+    if "grace_days" in payload:
+        set_setting(db, "grace_days", str(int(payload["grace_days"])))
+    return get_admin_settings(db, admin)
+
+
+@app.post("/api/admin/users/{user_id}/fine")
+def charge_fine(user_id: str, payload: dict, db: Session = Depends(get_db), admin: models.User = Depends(require_admin)):
+    user = db.query(models.User).filter(models.User.id == user_id).first()
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found.")
+    try:
+        amount = float(payload.get("amount", 0))
+    except Exception:
+        raise HTTPException(status_code=400, detail="Invalid amount.")
+    reason = payload.get("reason", "Overdue fine")
+    from datetime import date
+    # create a Fine record
+    fine = models.Fine(user_id=user.id, amount=str(round(amount, 2)), reason=reason)
+    db.add(fine)
+    db.add(models.Notification(
+        user_id=user.id,
+        title=f"Fine issued: ${amount:.2f}",
+        body=f"A fine of ${amount:.2f} has been applied. {reason}",
+        read=False,
+        created_at=date.today(),
+    ))
+    db.commit()
+    db.refresh(fine)
+    return {"status": "ok", "fine": {"id": fine.id, "amount": float(fine.amount), "reason": fine.reason}}
+
+
+# Alias: plural route used by frontend/mock
+@app.post("/api/admin/users/{user_id}/fines")
+def create_fine_alias(user_id: str, payload: dict, db: Session = Depends(get_db), admin: models.User = Depends(require_admin)):
+    return charge_fine(user_id, payload, db, admin)
+
+
+@app.get("/api/fines", response_model=schemas.FineListOut)
+def list_my_fines(current_user: models.User = Depends(get_current_user), db: Session = Depends(get_db)):
+    fines = db.query(models.Fine).filter(models.Fine.user_id == current_user.id).order_by(models.Fine.created_at.desc()).all()
+    return schemas.FineListOut(items=fines)
+
+
+@app.get("/api/admin/fines", response_model=schemas.FineListOut)
+def list_all_fines(db: Session = Depends(get_db), admin: models.User = Depends(require_admin)):
+    fines = db.query(models.Fine).order_by(models.Fine.created_at.desc()).all()
+    return schemas.FineListOut(items=fines)
+
+
+@app.post("/api/fines/{fine_id}/pay")
+def pay_fine(fine_id: str, db: Session = Depends(get_db), current_user: models.User = Depends(get_current_user)):
+    fine = db.query(models.Fine).filter(models.Fine.id == fine_id).first()
+    if not fine:
+        raise HTTPException(status_code=404, detail="Fine not found.")
+    # only the owner or an admin can mark as paid
+    if fine.user_id != current_user.id and current_user.role != 'admin':
+        raise HTTPException(status_code=403, detail="Not authorized.")
+    from datetime import date
+    fine.paid = True
+    fine.paid_at = date.today()
+    db.add(models.Notification(
+        user_id=fine.user_id,
+        title=f"Fine paid: ${float(fine.amount):.2f}",
+        body=f"Your fine of ${float(fine.amount):.2f} has been marked as paid.",
+        read=False,
+        created_at=date.today(),
+    ))
+    db.commit()
+    return {"status": "ok"}
 
 
 # ===========================================================================

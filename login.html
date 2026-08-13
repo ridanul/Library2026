@@ -124,6 +124,26 @@
           Create account
         </button>
       </form>
+        <!-- Verification Modal -->
+        <div id="verifyModal" class="hidden fixed inset-0 bg-ink/40 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div class="bg-parchment border border-ink/15 rounded-lg w-full max-w-sm p-6 shadow-2xl">
+            <div class="flex items-center justify-between mb-4">
+              <h2 class="font-display text-xl text-ink">Email verification</h2>
+              <button id="closeVerifyModal" class="text-charcoal/50 hover:text-charcoal">✕</button>
+            </div>
+            <p class="text-sm text-charcoal/60 mb-3">Enter the verification code sent to your email.</p>
+            <input type="hidden" id="verifyEmail" />
+            <div>
+              <label class="block text-xs font-mono uppercase text-charcoal/60 mb-1">Code</label>
+              <input id="verifyCode" class="w-full border border-ink/15 rounded px-3 py-2 bg-white" />
+            </div>
+            <div class="flex gap-2 pt-4">
+              <button id="confirmVerifyBtn" class="flex-1 bg-ink text-parchment font-medium py-2.5 rounded hover:bg-ink/90 transition">Verify</button>
+              <button id="cancelVerifyBtn" class="px-4 py-2.5 rounded border border-ink/15 hover:bg-parchmentDark transition">Cancel</button>
+            </div>
+            <p id="verifyError" class="text-rust text-sm hidden mt-2"></p>
+          </div>
+        </div>
     </div>
   </div>
 
@@ -226,50 +246,69 @@
         password: document.getElementById('regPassword').value,
         role: document.getElementById('regRole').value,
       });
-      // Email verification required for all new accounts.
-      if (resp.pendingVerification) {
+
+      // Prefer explicit verification flow: if backend indicates pendingVerification,
+      // or it did not return a token, prompt for the verification code.
+      const needsVerification = resp && (resp.pendingVerification === true || !resp.token);
+      if (needsVerification) {
         registerNoticeEl.textContent = 'A verification code has been sent to your email. Enter it to complete registration.';
         registerNoticeEl.classList.remove('hidden');
-        const code = window.prompt('Enter the verification code sent to your email:');
-        if (!code) {
-          registerErrorEl.textContent = 'Verification was not completed.';
-          registerErrorEl.classList.remove('hidden');
-          return;
-        }
-        try {
-          const verifyResp = await Api.verifyEmail({ email: document.getElementById('regEmail').value.trim(), code });
-          if (verifyResp.pendingApproval) {
-            registerNoticeEl.textContent = 'Your email is verified. An admin must approve your student account before you can sign in.';
-            registerNoticeEl.classList.remove('hidden');
-            registerForm.reset();
-            document.getElementById('regRole').value = 'student';
-            roleButtons.forEach((btn) => {
-              btn.classList.remove('border-ink', 'bg-ink', 'text-parchment');
-              btn.classList.add('border-ink/15');
-            });
-            roleButtons[0].classList.add('border-ink', 'bg-ink', 'text-parchment');
-            activateTab('login');
-            document.getElementById('loginEmail').value = document.getElementById('regEmail').value.trim();
-            return;
+        // show in-page modal to collect verification code
+        document.getElementById('verifyEmail').value = document.getElementById('regEmail').value.trim();
+        document.getElementById('verifyCode').value = '';
+        document.getElementById('verifyError').classList.add('hidden');
+        document.getElementById('verifyModal').classList.remove('hidden');
+
+        // wire up modal buttons (idempotent)
+        document.getElementById('closeVerifyModal').onclick = () => document.getElementById('verifyModal').classList.add('hidden');
+        document.getElementById('cancelVerifyBtn').onclick = () => document.getElementById('verifyModal').classList.add('hidden');
+        document.getElementById('confirmVerifyBtn').onclick = async () => {
+          const code = document.getElementById('verifyCode').value.trim();
+          if (!code) {
+            const el = document.getElementById('verifyError'); el.textContent = 'Please enter the verification code.'; el.classList.remove('hidden'); return;
           }
-          const { token, user } = await Api.login({
-            email: document.getElementById('regEmail').value.trim(),
-            password: document.getElementById('regPassword').value,
-          });
-          Auth.setSession(token, user);
-          window.location.href = 'dashboard.html';
-        } catch (vErr) {
-          registerErrorEl.textContent = vErr.message || 'Verification failed.';
-          registerErrorEl.classList.remove('hidden');
-        }
+          try {
+            const verifyResp = await Api.verifyEmail({ email: document.getElementById('verifyEmail').value.trim(), code });
+            document.getElementById('verifyModal').classList.add('hidden');
+            if (verifyResp.pendingApproval) {
+              registerNoticeEl.textContent = 'Your email is verified. An admin must approve your student account before you can sign in.';
+              registerNoticeEl.classList.remove('hidden');
+              registerForm.reset();
+              document.getElementById('regRole').value = 'student';
+              roleButtons.forEach((btn) => {
+                btn.classList.remove('border-ink', 'bg-ink', 'text-parchment');
+                btn.classList.add('border-ink/15');
+              });
+              roleButtons[0].classList.add('border-ink', 'bg-ink', 'text-parchment');
+              activateTab('login');
+              document.getElementById('loginEmail').value = document.getElementById('regEmail').value.trim();
+              return;
+            }
+            // After verification, attempt to login (backend should accept credentials now)
+            const { token, user } = await Api.login({
+              email: document.getElementById('regEmail').value.trim(),
+              password: document.getElementById('regPassword').value,
+            });
+            Auth.setSession(token, user);
+            window.location.href = 'dashboard.html';
+          } catch (vErr) {
+            const el = document.getElementById('verifyError'); el.textContent = vErr.message || 'Verification failed.'; el.classList.remove('hidden');
+          }
+        };
         return;
       }
 
-      // Fallback: if register returned a token (back-compat), proceed
-      if (resp.token && resp.user) {
+      // If backend returned a token (auto-login), use it. Otherwise show a fallback notice.
+      if (resp && resp.token && resp.user) {
         Auth.setSession(resp.token, resp.user);
         window.location.href = 'dashboard.html';
+        return;
       }
+
+      // If we reach here, the server didn't return a token and didn't indicate
+      // explicit pending verification. Show a generic notice prompting manual verify.
+      registerNoticeEl.textContent = 'Registration received. Please check your email for a verification code.';
+      registerNoticeEl.classList.remove('hidden');
     } catch (err) {
       registerErrorEl.textContent = err.message || 'Could not create account.';
       registerErrorEl.classList.remove('hidden');

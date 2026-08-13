@@ -115,3 +115,26 @@ class NotificationListOut(BaseModel):
 
 class RecommendationsOut(BaseModel):
     items: List[BookOut]
+
+
+# ---------- Fines ----------
+class FineOut(BaseModel):
+    id: str
+    user_id: str
+    amount: float
+    reason: str
+    paid: bool
+    created_at: date
+    paid_at: Optional[date] = None
+
+    class Config:
+        from_attributes = True
+
+
+class FineCreateIn(BaseModel):
+    amount: float
+    reason: Optional[str] = "Overdue fine"
+
+
+class FineListOut(BaseModel):
+    items: List[FineOut]

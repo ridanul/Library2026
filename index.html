@@ -8,88 +8,55 @@
 #sleep-box{background:#fff;border:1px solid #e6e9ee;padding:22px;border-radius:10px;max-width:520px;text-align:center;box-shadow:0 8px 30px rgba(10,20,30,0.06)}
 #countdown{font-weight:700;font-size:1.6rem;margin-top:8px}
 </style>
+	<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+	<script src="https://cdn.tailwindcss.com"></script>
+	<link rel="stylesheet" href="css/styles.css" />
 </head>
-<body>
-<script>
-(function(){
-	const target = localStorage.getItem("lib_token") ? "dashboard.html" : "login.html";
-	const RAW_HEALTH = "api.has-ib.dev/api/health"; // user-provided value — may be host-only or full URL
-	const RETRY_SECONDS = 20; // countdown duration when render/backend appears to be sleeping
+<body class="paper-texture min-h-screen flex items-center justify-center p-6">
+	<div class="w-full max-w-4xl bg-white/90 border border-ink/10 rounded-lg p-8 shadow-lg">
+		<div class="flex items-center justify-between mb-6">
+			<h1 class="font-display text-2xl">KiU Library</h1>
+			<div class="text-sm font-mono">
+				<a href="login.html" class="text-ink hover:underline mr-4">Sign in</a>
+				<a href="login.html" class="text-ink hover:underline">Register</a>
+			</div>
+		</div>
 
-	const HEALTH_URLS = (()=>{
-		const u = RAW_HEALTH && RAW_HEALTH.trim();
-		const urls = [];
-		if(u){
-			if(u.startsWith('http://') || u.startsWith('https://') || u.startsWith('//')){
-				urls.push(u);
-			}else{
-				urls.push(u); // try as-provided (may be relative)
-				urls.push('https://' + u);
-				urls.push('http://' + u);
-			}
-		}
-		// always try local origin fallback
-		urls.push(window.location.origin + '/api/health');
-		// dedupe while preserving order
-		return [...new Set(urls)];
-	})();
+		<div class="mb-6">
+			<p class="text-sm text-charcoal/60">Search the catalog — title, author, or ISBN.</p>
+			<form id="landingSearch" class="mt-3 flex gap-3">
+				<input id="landingQuery" type="text" placeholder="Search books…" class="flex-1 border rounded px-4 py-2" />
+				<button class="bg-ink text-parchment px-4 py-2 rounded">Search</button>
+			</form>
+		</div>
 
-	function showOverlay(seconds){
-		if(document.getElementById('sleep-overlay')) return;
-		const ov = document.createElement('div');
-		ov.id = 'sleep-overlay';
-		ov.innerHTML = `
-			<div id="sleep-box">
-				<div style="font-size:1.05rem">Waking the backend service…</div>
-				<div id="countdown">${seconds}</div>
-				<div style="margin-top:12px;color:#666">We'll try again automatically.</div>
-			</div>`;
-		document.body.appendChild(ov);
-	}
+		<div class="grid md:grid-cols-2 gap-6">
+			<section>
+				<h2 class="font-mono text-sm text-brass uppercase mb-2">Latest notices</h2>
+				<div id="notices" class="space-y-3">
+					<div class="p-3 border rounded bg-parchment/60">New arrivals in Sci-Fi — Project Hail Mary now available.</div>
+					<div class="p-3 border rounded bg-parchment/60">Library will be closed on public holiday — plan your returns.</div>
+				</div>
+			</section>
 
-	function updateCountdown(n){
-		const el = document.getElementById('countdown');
-		if(el) el.textContent = n;
-	}
+			<section>
+				<h2 class="font-mono text-sm text-brass uppercase mb-2">Policies</h2>
+				<div class="text-sm text-charcoal/70 space-y-2">
+					<p>Loan period: 14 days (grace period before fines).</p>
+					<p>Fines accrue per day for overdue items. Admins may adjust fines.</p>
+					<p>Student accounts require admin approval after email verification.</p>
+				</div>
+			</section>
+		</div>
+	</div>
 
-	async function checkHealth(){
-			for(const url of HEALTH_URLS){
-				try{
-					const resp = await fetch(url, {cache: 'no-store'});
-					if(resp && resp.ok){
-						window.location.href = target;
-						return true;
-					}
-				}catch(e){
-					// try next URL
-					console.debug('health check failed for', url, e && e.message ? e.message : e);
-				}
-			}
-			return false;
-	}
-
-	async function pollUntilReady(){
-		if(await checkHealth()) return;
-		let seconds = RETRY_SECONDS;
-		showOverlay(seconds);
-		const tick = setInterval(()=>{
-			seconds = Math.max(0, seconds - 1);
-			updateCountdown(seconds);
-		}, 1000);
-
-		while(true){
-			await new Promise(r=>setTimeout(r, RETRY_SECONDS * 1000));
-			if(await checkHealth()){
-				clearInterval(tick);
-				return;
-			}
-			seconds = RETRY_SECONDS;
-			updateCountdown(seconds);
-		}
-	}
-
-	pollUntilReady();
-})();
-</script>
+	<script>
+		document.getElementById('landingSearch').addEventListener('submit', (e) => {
+			e.preventDefault();
+			const q = document.getElementById('landingQuery').value.trim();
+			if (!q) return; 
+			window.location.href = `dashboard.html?q=${encodeURIComponent(q)}`;
+		});
+	</script>
 </body>
 </html>

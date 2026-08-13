@@ -28,6 +28,7 @@ const Mock = (() => {
       loans: [
         { id: "loan1", userId: "u1", userName: "Priya Nair", bookId: "b1", bookTitle: "The Left Hand of Darkness", borrowed_at: "2026-07-28", due_date: "2026-08-01", returned: false },
       ],
+      fines: [],
       session: null, // {userId}
     };
   }
@@ -45,6 +46,7 @@ const Mock = (() => {
     if (!Array.isArray(d.books)) { d.books = []; changed.push("books"); }
     if (!Array.isArray(d.notifications)) { d.notifications = []; changed.push("notifications"); }
     if (!Array.isArray(d.loans)) { d.loans = []; changed.push("loans"); }
+    if (!Array.isArray(d.fines)) { d.fines = []; changed.push("fines"); }
 
     d.users = d.users.map((u) => ({
       ...u,
@@ -87,16 +89,16 @@ const Mock = (() => {
         throw e;
       }
       const role = body.role || "student";
-      const user = {
-        id: `u${Date.now()}`,
-        name: body.name,
-        email: body.email,
-        password: body.password,
-        role,
-        status: "approved",
-        email_verified: false,
-        genres: [],
-      };
+        const user = {
+          id: `u${Date.now()}`,
+          name: body.name,
+          email: body.email,
+          password: body.password,
+          role,
+          status: role === 'admin' ? 'approved' : 'pending',
+          email_verified: false,
+          genres: [],
+        };
       d.users.push(user);
       save(d);
       return { pendingVerification: true };
@@ -162,6 +164,46 @@ const Mock = (() => {
     if (path === "/admin/overdue" && method === "GET") {
       const today = new Date().toISOString().slice(0, 10);
       return { items: d.loans.filter((loan) => !loan.returned && loan.due_date < today) };
+    }
+    if (path.match(/^\/admin\/users\/[^/]+\/fines$/) && method === "POST") {
+      const id = path.split("/")[3];
+      const user = d.users.find((u) => u.id === id);
+      if (!user) { const e = new Error("User not found"); e.status = 404; throw e; }
+      const amount = Number(body?.amount || 0);
+      const reason = body?.reason || "Overdue fine";
+      const today = new Date().toISOString().slice(0,10);
+      const fine = { id: `f${Date.now()}`, userId: user.id, amount: amount, reason, paid: false, created_at: today, paid_at: null };
+      d.fines.unshift(fine);
+      d.notifications.unshift({
+        id: `n${Date.now()+1}`,
+        title: `Fine issued: $${Number(amount).toFixed(2)}`,
+        body: `A fine of $${Number(amount).toFixed(2)} has been applied. ${reason}`,
+        read: false,
+        created_at: today,
+      });
+      save(d);
+      return { status: 'ok', fine };
+    }
+
+    if (path === "/fines" && method === "GET") {
+      const user = userFromToken();
+      if (!user) { const e = new Error("Not authenticated"); e.status = 401; throw e; }
+      return { items: d.fines.filter((f) => f.userId === user.id) };
+    }
+
+    if (path === "/admin/fines" && method === "GET") {
+      return { items: d.fines };
+    }
+
+    if (path.match(/^\/fines\/[^^/]+\/pay$/) && method === "POST") {
+      const id = path.split("/")[2];
+      const fine = d.fines.find((f) => f.id === id);
+      if (!fine) { const e = new Error("Fine not found"); e.status = 404; throw e; }
+      fine.paid = true;
+      fine.paid_at = new Date().toISOString().slice(0,10);
+      d.notifications.unshift({ id: `n${Date.now()}`, title: `Fine paid: $${Number(fine.amount).toFixed(2)}`, body: `Your fine has been marked as paid.`, read: false, created_at: fine.paid_at });
+      save(d);
+      return { status: 'ok' };
     }
 
     if (path.startsWith("/books") && method === "GET") {

@@ -53,7 +53,7 @@ function bookCard(book, { showBorrow = true } = {}) {
   const stampClass = book.available > 0 ? "stamp-available" : "stamp-out";
   const stampText = book.available > 0 ? `${book.available} available` : "checked out";
   return `
-    <div class="relative bg-white border border-ink/10 rounded-lg p-5 pt-6 shadow-sm hover:shadow-md transition">
+    <div data-detail="${book.id}" class="relative bg-white border border-ink/10 rounded-lg p-5 pt-6 shadow-sm hover:shadow-md transition">
       <span class="card-tab">${escapeHtml(book.genre || "Unsorted")}</span>
       <h3 class="font-display text-lg text-ink leading-snug mb-0.5">${escapeHtml(book.title)}</h3>
       <p class="text-sm text-charcoal/60 mb-3">${escapeHtml(book.author)}</p>
@@ -105,6 +105,13 @@ function renderBookGrid(items) {
   bookGrid.querySelectorAll("[data-borrow]").forEach((btn) => {
     btn.addEventListener("click", () => borrowBook(btn.dataset.borrow));
   });
+  // Attach detail handlers
+  bookGrid.querySelectorAll("[data-detail]").forEach((el) => {
+    el.addEventListener("click", (e) => {
+      if (e.target.closest('[data-borrow]')) return;
+      openBookDetail(el.dataset.detail);
+    });
+  });
 }
 
 let genreFilterPopulated = false;
@@ -130,7 +137,107 @@ searchInput.addEventListener("input", () => {
   searchDebounce = setTimeout(loadBooks, 300);
 });
 genreFilter.addEventListener("change", loadBooks);
+// If a search query is present on the landing page, pick it up before first load
+const urlParams = new URLSearchParams(window.location.search);
+if (urlParams.get('q')) {
+  searchInput.value = urlParams.get('q');
+}
 loadBooks();
+
+// ---------------------------------------------------------------------------
+// Book detail modal
+// ---------------------------------------------------------------------------
+const bookDetailModal = document.getElementById('bookDetailModal');
+if (bookDetailModal) {
+  const closeDetail = document.getElementById('closeDetailModal');
+  const detailCover = document.getElementById('detailCover');
+  const detailTitle = document.getElementById('detailTitle');
+  const detailAuthor = document.getElementById('detailAuthor');
+  const detailIsbn = document.getElementById('detailIsbn');
+  const detailDescription = document.getElementById('detailDescription');
+  const detailAvailable = document.getElementById('detailAvailable');
+  const detailBorrowBtn = document.getElementById('detailBorrowBtn');
+  closeDetail && closeDetail.addEventListener('click', () => bookDetailModal.classList.add('hidden'));
+
+  async function openBookDetail(id) {
+    try {
+      const book = await Api.getBook(id);
+      detailCover.src = book.cover_url || 'https://via.placeholder.com/160x220?text=Cover';
+      detailTitle.textContent = book.title;
+      detailAuthor.textContent = book.author;
+      detailIsbn.textContent = `ISBN: ${book.isbn}`;
+      detailDescription.textContent = book.description || '';
+      detailAvailable.textContent = book.available > 0 ? `${book.available} available` : 'checked out';
+      detailBorrowBtn.disabled = book.available < 1;
+      detailBorrowBtn.onclick = async () => {
+        try {
+          await Api.borrowBook(book.id);
+          toast('Borrowed — enjoy the read.');
+          bookDetailModal.classList.add('hidden');
+          loadBooks();
+        } catch (err) {
+          toast(err.message || 'Could not borrow that book.');
+        }
+      };
+      bookDetailModal.classList.remove('hidden');
+    } catch (err) {
+      toast(err.message || 'Could not load book details.');
+    }
+  }
+  window.openBookDetail = openBookDetail;
+}
+
+// ---------------------------------------------------------------------------
+// Settings modal (admin)
+// ---------------------------------------------------------------------------
+const settingsModal = document.getElementById('settingsModal');
+const openSettingsBtn = document.getElementById('openSettingsBtn');
+if (openSettingsBtn && settingsModal) {
+  openSettingsBtn.addEventListener('click', async () => {
+    try {
+      const s = await Api.getAdminSettings();
+      document.getElementById('settingFine').value = (s.fine_per_day ?? 0).toFixed ? (s.fine_per_day).toFixed(2) : s.fine_per_day;
+      document.getElementById('settingGrace').value = s.grace_days ?? 14;
+      settingsModal.classList.remove('hidden');
+    } catch (err) {
+      toast(err.message || 'Could not load settings.');
+    }
+  });
+  document.getElementById('closeSettingsModal').addEventListener('click', () => settingsModal.classList.add('hidden'));
+  document.getElementById('cancelSettingsBtn').addEventListener('click', () => settingsModal.classList.add('hidden'));
+  document.getElementById('saveSettingsBtn').addEventListener('click', async () => {
+    try {
+      const fine = parseFloat(document.getElementById('settingFine').value || 0);
+      const grace = parseInt(document.getElementById('settingGrace').value || 0, 10);
+      await Api.putAdminSettings({ fine_per_day: fine, grace_days: grace });
+      settingsModal.classList.add('hidden');
+      toast('Settings saved.');
+      loadAdminPanels();
+    } catch (err) {
+      toast(err.message || 'Could not save settings.');
+    }
+  });
+}
+
+// Fine modal handlers
+const fineModal = document.getElementById('fineModal');
+if (fineModal) {
+  document.getElementById('closeFineModal').addEventListener('click', () => fineModal.classList.add('hidden'));
+  document.getElementById('cancelFineBtn').addEventListener('click', () => fineModal.classList.add('hidden'));
+  document.getElementById('saveFineBtn').addEventListener('click', async () => {
+    try {
+      const userId = document.getElementById('fineUserId').value;
+      const amount = parseFloat(document.getElementById('fineAmount').value || 0);
+      const reason = document.getElementById('fineReason').value || 'Overdue fine';
+      await Api.createFine(userId, { amount, reason });
+      fineModal.classList.add('hidden');
+      toast('Fine applied.');
+      loadAdminPanels();
+    } catch (err) {
+      toast(err.message || 'Could not apply fine.');
+    }
+  });
+}
 
 // ---------------------------------------------------------------------------
 // Recommendations + interests
@@ -347,13 +454,28 @@ async function loadAdminPanels() {
     });
 
     const overdueList = document.getElementById("overdueList");
-    overdueList.innerHTML = overdueLoans.length
+    const overdueElHtml = overdueLoans.length
       ? overdueLoans.map((loan) => `
         <div class="rounded border border-rust/20 bg-rust/5 p-3">
           <p class="font-medium text-ink">${escapeHtml(loan.userName)} — ${escapeHtml(loan.bookTitle)}</p>
           <p class="text-xs font-mono text-charcoal/50">Due ${escapeHtml(loan.due_date)} · not returned</p>
+          <div class="mt-2 flex items-center justify-between">
+            <div class="text-xs text-charcoal/60">Overdue days: ${escapeHtml(String(loan.days_overdue || '—'))} · Fine: ${loan.fine ? ('$' + Number(loan.fine).toFixed(2)) : '—'}</div>
+            <button data-charge="${loan.userId}" data-amount="${loan.fine || ''}" class="text-xs font-mono bg-ink text-parchment px-3 py-1.5 rounded hover:bg-ink/90">Charge fine</button>
+          </div>
         </div>`).join("")
       : `<p class="text-sm text-charcoal/50">No overdue loans right now.</p>`;
+    overdueList.innerHTML = overdueElHtml;
+    overdueList.querySelectorAll('[data-charge]').forEach((btn) => {
+      btn.addEventListener('click', () => {
+        const userId = btn.dataset.charge;
+        const amount = btn.dataset.amount || '';
+        document.getElementById('fineUserId').value = userId;
+        document.getElementById('fineAmount').value = amount;
+        document.getElementById('fineReason').value = 'Overdue fine';
+        document.getElementById('fineModal').classList.remove('hidden');
+      });
+    });
   } catch (err) {
     document.getElementById("pendingUsersList").innerHTML = `<p class="text-sm text-rust">${escapeHtml(err.message || "Could not load admin panels.")}</p>`;
     document.getElementById("overdueList").innerHTML = "";

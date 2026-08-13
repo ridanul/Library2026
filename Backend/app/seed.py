@@ -69,3 +69,7 @@ def run(db: Session):
     ))
 
     db.commit()
+    # Default app settings
+    db.add(models.AppSetting(key="fine_per_day", value="0.5"))
+    db.add(models.AppSetting(key="grace_days", value="14"))
+    db.commit()

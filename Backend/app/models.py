@@ -84,3 +84,24 @@ class EmailVerification(Base):
     created_at = Column(Date, default=date.today)
 
     user = relationship("User")
+
+
+class AppSetting(Base):
+    __tablename__ = "app_settings"
+
+    key = Column(String, primary_key=True)
+    value = Column(String, nullable=False)
+
+
+class Fine(Base):
+    __tablename__ = "fines"
+
+    id = Column(String, primary_key=True, default=lambda: gen_id("f"))
+    user_id = Column(String, ForeignKey("users.id"), nullable=False)
+    amount = Column(String, nullable=False)
+    reason = Column(String, default="Overdue fine")
+    paid = Column(Boolean, default=False)
+    created_at = Column(Date, default=date.today)
+    paid_at = Column(Date, nullable=True)
+
+    user = relationship("User")

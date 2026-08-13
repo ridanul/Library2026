@@ -20,6 +20,21 @@ the header when this happens. Demo logins:
    ```python
    from fastapi.staticfiles import StaticFiles
    app.mount("/", StaticFiles(directory="library-frontend", html=True), name="frontend")
+
+## Backend (FastAPI)
+
+This project includes a FastAPI backend under `Backend/app/`. Quick start using the included virtualenv:
+
+1. Activate the venv: `source Backend/venv/bin/activate`
+2. Install dependencies (if needed): `python -m pip install -r Backend/requirements.txt`
+3. Run the server: `uvicorn Backend.app.main:app --reload --port 8000`
+
+API additions in this fork:
+- Email verification during registration (`/auth/verify`).
+- Admin approval flow for student accounts (`/admin/users/pending`, `/admin/users/{id}/approve`).
+- Fines management: admins can create fines and users can list/pay fines (`/admin/users/{id}/fines`, `/fines`, `/fines/{id}/pay`).
+
+If you don't want the demo mock and are testing locally, ensure `js/config.js` points to your running API and that CORS is configured.
    ```
 
 ## Files
