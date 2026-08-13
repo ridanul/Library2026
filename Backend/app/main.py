@@ -79,12 +79,15 @@ def set_setting(db: Session, key: str, value: str):
 def register(payload: schemas.RegisterIn, db: Session = Depends(get_db)):
     if db.query(models.User).filter(models.User.email == payload.email).first():
         raise HTTPException(status_code=409, detail="An account with that email already exists.")
+    # Force student role - admin accounts can only be assigned by existing admins
+    if payload.role != "student":
+        raise HTTPException(status_code=403, detail="Admin accounts can only be assigned by existing administrators.")
     user = models.User(
         name=payload.name,
         email=payload.email,
         hashed_password=hash_password(payload.password),
-        role=payload.role,
-        status="approved" if payload.role == "admin" else "pending",
+        role="student",  # Force student role
+        status="pending",  # Students are pending until admin approval
         genres="",
     )
     db.add(user)
@@ -100,10 +103,10 @@ def register(payload: schemas.RegisterIn, db: Session = Depends(get_db)):
     # send email (best-effort)
     try:
         send_verification_email(user.email, code)
-    except Exception:
-        pass
+    except Exception as e:
+        print(f"[register] Email verification failed for {user.email}: {e}")
     # Email verification is required; students remain pending until an admin approves them.
-    return {"pendingVerification": True, "pendingApproval": user.role == "student"}
+    return {"pendingVerification": True, "pendingApproval": True}
 
 
 @app.post("/api/auth/verify")
@@ -190,6 +193,42 @@ def approve_user(user_id: str, db: Session = Depends(get_db), admin: models.User
     user.status = "approved"
     db.commit()
     return {"status": "approved", "user": user_out(user)}
+
+
+@app.post("/api/admin/users/{user_id}/promote")
+def promote_to_admin(user_id: str, db: Session = Depends(get_db), admin: models.User = Depends(require_admin)):
+    """Promote a student to admin role (admin-only endpoint)"""
+    user = db.query(models.User).filter(models.User.id == user_id).first()
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found.")
+    if user.role == "admin":
+        raise HTTPException(status_code=400, detail="User is already an admin.")
+    user.role = "admin"
+    user.status = "approved"
+    db.commit()
+    return {"status": "ok", "user": user_out(user)}
+
+
+@app.post("/api/admin/users/{user_id}/demote")
+def demote_from_admin(user_id: str, db: Session = Depends(get_db), admin: models.User = Depends(require_admin)):
+    """Demote an admin to student role (admin-only endpoint) - with protection for last admin"""
+    user = db.query(models.User).filter(models.User.id == user_id).first()
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found.")
+    if user.role != "admin":
+        raise HTTPException(status_code=400, detail="User is not an admin.")
+    
+    # Check if this is the last admin
+    admin_count = db.query(models.User).filter(models.User.role == "admin").count()
+    if admin_count <= 1:
+        raise HTTPException(status_code=403, detail="Cannot remove the last admin. There must be at least one admin in the system.")
+    
+    user.role = "student"
+    user.status = "pending"
+    db.commit()
+    return {"status": "ok", "user": user_out(user)}
+
+
 
 
 # Admin: overdue loans + settings

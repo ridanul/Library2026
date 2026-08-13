@@ -26,12 +26,12 @@ function setView(view) {
   state.view = view;
   document.querySelectorAll(".view-panel").forEach((p) => p.classList.add("hidden"));
   document.getElementById(`view-${view}`).classList.remove("hidden");
-  document.querySelectorAll(".nav-btn").forEach((b) => {
-    const active = b.dataset.view === view;
-    b.classList.toggle("bg-parchment", active);
-    b.classList.toggle("text-ink", active);
-    b.classList.toggle("text-parchment/70", !active);
-  });
+  // document.querySelectorAll(".nav-btn").forEach((b) => {
+  //   const active = b.dataset.view === view;
+  //   b.classList.toggle("bg-parchment", active);
+  //   b.classList.toggle("text-ink", active);
+  //   b.classList.toggle("text-parchment/70", !active);
+  // });
   if (view === "recommendations") loadRecommendations();
   if (view === "notifications") loadNotifications();
   if (view === "manage") loadManageTable();

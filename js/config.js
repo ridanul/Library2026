@@ -4,8 +4,8 @@
 // so the frontend can be reviewed/demoed on its own.
 // ---------------------------------------------------------------------------
 window.LIB_CONFIG = {
-  API_BASE: "https://api.has-ib.dev/api",
-  DEMO_MODE_FALLBACK: true, // auto-use mock data if the API can't be reached
+  API_BASE: "https://api.has-ib.dev/api",  // Local development server
+  DEMO_MODE_FALLBACK: false, // Set to false to catch API errors for debugging
   ENDPOINTS: {
     register: "/auth/register",          // POST  {name,email,password,role}
     login: "/auth/login",                // POST  {email,password} -> {token,user}
@@ -18,5 +18,7 @@ window.LIB_CONFIG = {
     interests: "/users/interests",       // GET | POST {genres:[]}
     notifications: "/notifications",     // GET -> [notification]
     notificationRead: (id) => `/notifications/${id}/read`, // POST
+    verifyEmail: "/auth/verify",         // POST {email,code} -> verify email
+    resendVerification: "/auth/resend-verification", // POST {email}
   },
 };

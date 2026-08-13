@@ -9,7 +9,7 @@ class RegisterIn(BaseModel):
     name: str
     email: EmailStr
     password: str = Field(min_length=6)
-    role: Literal["student", "admin"] = "student"
+    role: Literal["student"] = "student"  # Only students can self-register
 
 
 class VerifyIn(BaseModel):

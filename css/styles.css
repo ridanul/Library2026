@@ -1,7 +1,7 @@
 @import url('https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600;9..144,700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap');
 
 :root {
-  --ink: #1B2A4A;
+  --ink: #000000;
   --parchment: #F3EDE1;
   --parchment-dark: #E8DFCC;
   --brass: #B8894A;
@@ -53,8 +53,23 @@ body { font-family: 'IBM Plex Sans', sans-serif; background-color: var(--parchme
   border-radius: 2px;
 }
 
-.nav-btn { color: rgba(243,237,225,0.7); transition: background-color .15s, color .15s; }
-.nav-btn:hover { background-color: rgba(243,237,225,0.08); }
+.nav-btn {
+  color: rgba(0, 0, 0, 0.7);
+  transition: background-color .15s, color .15s;
+}
+
+.nav-btn:hover {
+  background-color: rgba(243,237,225,0.08);
+  color: var(--brass);
+}
+
+.nav-btn.active {
+  color: #000 !important;
+}
+
+.nav-btn.active:hover {
+  color: var(--brass) !important;
+}
 
 .scrollbar-thin::-webkit-scrollbar { width: 6px; height: 6px; }
 .scrollbar-thin::-webkit-scrollbar-thumb { background: var(--brass); border-radius: 4px; }

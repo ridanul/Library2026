@@ -1,129 +1,173 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>KiU Library — Sign in</title>
-<script src="https://cdn.tailwindcss.com"></script>
-<script>
-  tailwind.config = {
-    theme: {
-      extend: {
-        colors: {
-          ink: '#1B2A4A', parchment: '#F3EDE1', parchmentDark: '#E8DFCC',
-          brass: '#B8894A', sage: '#6B7F6E', rust: '#A8442E', charcoal: '#2E2B28',
-        },
-        fontFamily: {
-          display: ['Fraunces', 'serif'],
-          mono: ['IBM Plex Mono', 'monospace'],
-        },
-      },
-    },
-  };
-</script>
-<link rel="stylesheet" href="css/styles.css" />
+	<meta charset="UTF-8" />
+	<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+	<title>KiU Library — Sign in</title>
+	<script src="https://cdn.tailwindcss.com"></script>
+	<script>
+	  tailwind.config = {
+	    theme: {
+	      extend: {
+	        colors: {
+          ink: '#000000', parchment: '#F3EDE1', parchmentDark: '#E8DFCC',
+	          brass: '#B8894A', sage: '#6B7F6E', rust: '#A8442E', charcoal: '#2E2B28',
+	        },
+	        fontFamily: {
+	          display: ['Fraunces', 'serif'],
+	          mono: ['IBM Plex Mono', 'monospace'],
+	        },
+	      },
+	    },
+	  };
+	</script>
+	<link rel="stylesheet" href="css/styles.css" />
 </head>
-<body class="paper-texture min-h-screen flex items-center justify-center p-4">
+<body class="paper-texture min-h-screen bg-gray-50 flex flex-col">
+	<!-- Header -->
+	<header class="bg-white border-b border-ink/10 shadow-sm">
+		<div class="max-w-7xl mx-auto px-6 py-4">
+			<a href="index.html" class="flex items-center gap-4 text-decoration-none">
+				<h1 class="font-display text-3xl font-bold text-ink">KiU Library</h1>
+				<p class="text-xs text-charcoal/60 font-mono">Knowledge · Information · Understanding</p>
+			</a>
+		</div>
+	</header>
 
-  <div class="w-full max-w-4xl grid md:grid-cols-2 bg-white/70 border border-ink/10 rounded-lg overflow-hidden shadow-xl shadow-ink/5">
+	<!-- Main Content -->
+	<main class="flex-1 flex items-center justify-center px-6 py-12">
+		<div class="w-full max-w-2xl bg-white rounded-lg border border-ink/10 shadow-md">
+			<div class="grid md:grid-cols-2">
+				<!-- Left Panel: Info -->
+				<div class="hidden md:flex flex-col justify-between bg-ink text-parchment p-8">
+					<div>
+						<p class="font-mono text-xs tracking-[0.2em] text-brass uppercase mb-3">Welcome</p>
+						<h2 class="font-display text-3xl leading-tight">Access Your Library</h2>
+					</div>
+					<div class="space-y-3">
+						<p class="font-mono text-xs text-parchment/70 leading-relaxed">
+							📚 Search our complete catalog
+						</p>
+						<p class="font-mono text-xs text-parchment/70 leading-relaxed">
+							🎓 Manage your loans and returns
+						</p>
+						<p class="font-mono text-xs text-parchment/70 leading-relaxed">
+							📧 Get notifications for new arrivals
+						</p>
+					</div>
+				</div>
 
-    <!-- Left: brand panel -->
-    <div class="hidden md:flex flex-col justify-between bg-ink text-parchment p-10 relative">
-      <div>
-        <p class="font-mono text-xs tracking-[0.2em] text-brass uppercase mb-2">Est. Reading Room</p>
-        <h1 class="font-display text-4xl leading-tight">KiU<br/>Library System</h1>
-      </div>
-      <div class="stamp stamp-new border-brass text-brass w-fit">Circulation Desk</div>
-      <p class="font-mono text-xs text-parchment/60 leading-relaxed">
-        One catalog for every reader. Search the stacks, track what's checked out,
-        and get notified the moment something in your genre arrives.
-      </p>
-    </div>
+				<!-- Right Panel: Forms -->
+				<div class="p-8">
+					<!-- Tabs -->
+					<div class="flex gap-1 mb-6 bg-parchmentDark rounded-md p-1 w-fit">
+						<button id="tabLogin" class="px-4 py-1.5 rounded text-sm font-medium transition">Sign in</button>
+						<button id="tabRegister" class="px-4 py-1.5 rounded text-sm font-medium transition">Register</button>
+					</div>
 
-    <!-- Right: form panel -->
-    <div class="p-8 sm:p-10">
-      <div class="md:hidden mb-6">
-        <p class="font-mono text-xs tracking-[0.2em] text-brass uppercase mb-1">Athenaeum</p>
-        <h1 class="font-display text-2xl text-ink">Library System</h1>
-      </div>
+					<!-- LOGIN FORM -->
+					<form id="loginForm" class="space-y-4">
+						<div>
+							<h2 class="font-display text-xl text-ink mb-1">Welcome back</h2>
+							<p class="text-sm text-charcoal/60 mb-4">Sign in to reach your shelf.</p>
+						</div>
 
-      <!-- Login / Register tabs -->
-      <div class="flex gap-1 mb-6 bg-parchmentDark rounded-md p-1 w-fit">
-        <button id="tabLogin" class="px-4 py-1.5 rounded text-sm font-medium transition">Sign in</button>
-        <button id="tabRegister" class="px-4 py-1.5 rounded text-sm font-medium transition">Register</button>
-      </div>
+						<div>
+							<label class="block text-xs font-mono uppercase tracking-wide text-charcoal/60 mb-1">Email</label>
+							<input type="email" id="loginEmail" required placeholder="you@example.com"
+								class="w-full border border-ink/15 rounded px-3 py-2 bg-white focus:outline-none focus:ring-2 focus:ring-brass" />
+						</div>
+						<div>
+							<label class="block text-xs font-mono uppercase tracking-wide text-charcoal/60 mb-1">Password</label>
+							<input type="password" id="loginPassword" required placeholder="••••••••"
+								class="w-full border border-ink/15 rounded px-3 py-2 bg-white focus:outline-none focus:ring-2 focus:ring-brass" />
+						</div>
 
-      <!-- LOGIN FORM -->
-      <form id="loginForm" class="space-y-4">
-        <h2 class="font-display text-xl text-ink mb-1">Welcome back</h2>
-        <p class="text-sm text-charcoal/60 mb-4">Sign in to reach your shelf.</p>
+						<p id="loginError" class="text-rust text-sm hidden"></p>
 
-        <div>
-          <label class="block text-xs font-mono uppercase tracking-wide text-charcoal/60 mb-1">Email</label>
-          <input type="email" id="loginEmail" required placeholder="you@example.com"
-            class="w-full border border-ink/15 rounded px-3 py-2 bg-white focus:outline-none focus:ring-2 focus:ring-brass" />
-        </div>
-        <div>
-          <label class="block text-xs font-mono uppercase tracking-wide text-charcoal/60 mb-1">Password</label>
-          <input type="password" id="loginPassword" required placeholder="••••••••"
-            class="w-full border border-ink/15 rounded px-3 py-2 bg-white focus:outline-none focus:ring-2 focus:ring-brass" />
-        </div>
+						<button type="submit" class="w-full bg-ink text-parchment font-medium py-2.5 rounded hover:bg-ink/90 transition">
+							Sign in
+						</button>
 
-        <p id="loginError" class="text-rust text-sm hidden"></p>
+						<div class="font-mono text-[11px] text-charcoal/50 bg-parchmentDark rounded p-3 leading-relaxed">
+							Demo: student@demo.io / student123
+						</div>
+					</form>
 
-        <button type="submit" class="w-full bg-ink text-parchment font-medium py-2.5 rounded hover:bg-ink/90 transition">
-          Sign in
-        </button>
+					<!-- REGISTER FORM -->
+					<form id="registerForm" class="space-y-4 hidden">
+						<div>
+							<h2 class="font-display text-xl text-ink mb-1">Get a library card</h2>
+							<p class="text-sm text-charcoal/60 mb-4">Create a student account. Admin accounts can only be assigned by existing admins.</p>
+						</div>
 
-        <div class="font-mono text-[11px] text-charcoal/50 bg-parchmentDark rounded p-3 leading-relaxed">
-          Demo accounts — student@demo.io / student123 &middot; admin@demo.io / admin123
-        </div>
-      </form>
+						<div>
+							<label class="block text-xs font-mono uppercase tracking-wide text-charcoal/60 mb-1">Full name</label>
+							<input type="text" id="regName" required placeholder="Jordan Lee"
+								class="w-full border border-ink/15 rounded px-3 py-2 bg-white focus:outline-none focus:ring-2 focus:ring-brass" />
+						</div>
+						<div>
+							<label class="block text-xs font-mono uppercase tracking-wide text-charcoal/60 mb-1">Email</label>
+							<input type="email" id="regEmail" required placeholder="you@example.com"
+								class="w-full border border-ink/15 rounded px-3 py-2 bg-white focus:outline-none focus:ring-2 focus:ring-brass" />
+						</div>
+						<div>
+							<label class="block text-xs font-mono uppercase tracking-wide text-charcoal/60 mb-1">Password</label>
+							<input type="password" id="regPassword" required minlength="6" placeholder="At least 6 characters"
+								class="w-full border border-ink/15 rounded px-3 py-2 bg-white focus:outline-none focus:ring-2 focus:ring-brass" />
+						</div>
 
-      <!-- REGISTER FORM -->
-      <form id="registerForm" class="space-y-4 hidden">
-        <h2 class="font-display text-xl text-ink mb-1">Get a library card</h2>
-        <p class="text-sm text-charcoal/60 mb-4">Create an account to start borrowing. Student accounts must be approved by an admin before sign-in.</p>
+						<input type="hidden" id="regRole" value="student" />
 
-        <div>
-          <label class="block text-xs font-mono uppercase tracking-wide text-charcoal/60 mb-1">Full name</label>
-          <input type="text" id="regName" required placeholder="Jordan Lee"
-            class="w-full border border-ink/15 rounded px-3 py-2 bg-white focus:outline-none focus:ring-2 focus:ring-brass" />
-        </div>
-        <div>
-          <label class="block text-xs font-mono uppercase tracking-wide text-charcoal/60 mb-1">Email</label>
-          <input type="email" id="regEmail" required placeholder="you@example.com"
-            class="w-full border border-ink/15 rounded px-3 py-2 bg-white focus:outline-none focus:ring-2 focus:ring-brass" />
-        </div>
-        <div>
-          <label class="block text-xs font-mono uppercase tracking-wide text-charcoal/60 mb-1">Password</label>
-          <input type="password" id="regPassword" required minlength="6" placeholder="At least 6 characters"
-            class="w-full border border-ink/15 rounded px-3 py-2 bg-white focus:outline-none focus:ring-2 focus:ring-brass" />
-        </div>
+						<!-- Verification Section (hidden by default, shown after registration) -->
+						<div id="verificationSection" class="hidden border-t pt-4 mt-4">
+							<p class="text-sm text-charcoal/60 mb-3">✅ Account created! Enter the 6-digit code sent to your email:</p>
+							<div>
+								<label class="block text-xs font-mono uppercase text-charcoal/60 mb-1">Verification Code</label>
+								<input id="verifyCode" type="text" maxlength="6" placeholder="000000" class="w-full border border-ink/15 rounded px-3 py-2 bg-white font-mono text-center text-lg tracking-widest focus:outline-none focus:ring-2 focus:ring-brass" />
+							</div>
+							<p id="verifyError" class="text-rust text-sm hidden mt-2"></p>
+							<button id="confirmVerifyBtn" type="button" class="w-full mt-3 bg-ink text-parchment font-medium py-2.5 rounded hover:bg-ink/90 transition">Verify Code</button>
+						</div>
 
-        <!-- Student / Admin role toggle -->
-        <div>
-          <label class="block text-xs font-mono uppercase tracking-wide text-charcoal/60 mb-2">Account type</label>
-          <div class="grid grid-cols-2 gap-2" id="roleToggle">
-            <button type="button" data-role="student"
-              class="role-option border-2 border-ink rounded-md py-2.5 text-sm font-medium transition">
-              🎓 Student
-            </button>
-            <button type="button" data-role="admin"
-              class="role-option border-2 border-ink/15 rounded-md py-2.5 text-sm font-medium transition">
-              🗝️ Admin
-            </button>
-          </div>
-          <input type="hidden" id="regRole" value="student" />
-        </div>
+						<p id="registerError" class="text-rust text-sm hidden"></p>
+						<p id="registerNotice" class="text-sage text-sm hidden"></p>
 
-        <p id="registerError" class="text-rust text-sm hidden"></p>
-        <p id="registerNotice" class="text-sage text-sm hidden"></p>
+						<button id="registerSubmitBtn" type="submit" class="w-full bg-brass text-white font-medium py-2.5 rounded hover:bg-brass/90 transition">
+							Create account
+						</button>
+					</form>
+				</div>
+			</div>
+		</div>
+	</main>
 
-        <button type="submit" class="w-full bg-brass text-white font-medium py-2.5 rounded hover:bg-brass/90 transition">
-          Create account
-        </button>
-      </form>
+	<!-- Footer -->
+	<footer class="bg-ink text-parchment border-t border-ink/20">
+		<div class="max-w-7xl mx-auto px-6 py-6">
+			<div class="grid grid-cols-1 md:grid-cols-3 gap-8 mb-4">
+				<div>
+					<h3 class="font-bold text-sm mb-2">KiU Library</h3>
+					<p class="text-xs opacity-75">Providing access to knowledge and information resources for all members.</p>
+				</div>
+				<div>
+					<h3 class="font-bold text-sm mb-2">Quick Links</h3>
+					<ul class="text-xs space-y-1 opacity-75">
+						<li><a href="index.html" class="hover:underline">Home</a></li>
+						<li><a href="#" class="hover:underline">Catalog</a></li>
+						<li><a href="#" class="hover:underline">Contact</a></li>
+					</ul>
+				</div>
+				<div>
+					<h3 class="font-bold text-sm mb-2">Support</h3>
+					<p class="text-xs opacity-75">Hours: 9:00 AM - 5:00 PM<br>Email: registrar@kiu.ac.bd<br>Phone: 02-9988 32221</p>
+				</div>
+			</div>
+			<div class="border-t border-parchment/20 pt-4 text-xs opacity-60 text-center">
+				<p>© 2026 Kishoreganj University Library. All rights reserved.</p>
+			</div>
+		</div>
+	</footer>
         <!-- Verification Modal -->
         <div id="verifyModal" class="hidden fixed inset-0 bg-ink/40 backdrop-blur-sm z-50 flex items-center justify-center p-4">
           <div class="bg-parchment border border-ink/15 rounded-lg w-full max-w-sm p-6 shadow-2xl">
@@ -148,30 +192,6 @@
   </div>
 
 <script src="js/config.js?v=2"></script>
-<script src="js/mock.js"></script>
-<script>
-  // Fallback: ensure LIB_CONFIG exists if js/config.js failed to load.
-  if (!window.LIB_CONFIG) {
-    console.warn('LIB_CONFIG not found — applying fallback configuration (demo mode).');
-    window.LIB_CONFIG = {
-      API_BASE: '',
-      DEMO_MODE_FALLBACK: true,
-      ENDPOINTS: {
-        register: "/auth/register",
-        login: "/auth/login",
-        me: "/auth/me",
-        books: "/books",
-        book: (id) => `/books/${id}`,
-        borrow: (id) => `/books/${id}/borrow`,
-        returnBook: (id) => `/books/${id}/return`,
-        recommendations: "/recommendations",
-        interests: "/users/interests",
-        notifications: "/notifications",
-        notificationRead: (id) => `/notifications/${id}/read`,
-      },
-    };
-  }
-</script>
 <script src="js/api.js"></script>
 <script src="js/auth.js"></script>
 <script>
@@ -183,6 +203,10 @@
   const registerForm = document.getElementById('registerForm');
   const registerErrorEl = document.getElementById('registerError');
   const registerNoticeEl = document.getElementById('registerNotice');
+  const verificationSection = document.getElementById('verificationSection');
+  const registerSubmitBtn = document.getElementById('registerSubmitBtn');
+
+  let currentUserEmail = '';
 
   function activateTab(which) {
     const isLogin = which === 'login';
@@ -200,21 +224,6 @@
   tabLogin.addEventListener('click', () => activateTab('login'));
   tabRegister.addEventListener('click', () => activateTab('register'));
   activateTab('login');
-
-  // Role toggle
-  const roleButtons = document.querySelectorAll('.role-option');
-  roleButtons.forEach((btn) => {
-    btn.addEventListener('click', () => {
-      roleButtons.forEach((b) => {
-        b.classList.remove('border-ink', 'bg-ink', 'text-parchment');
-        b.classList.add('border-ink/15');
-      });
-      btn.classList.add('border-ink', 'bg-ink', 'text-parchment');
-      btn.classList.remove('border-ink/15');
-      document.getElementById('regRole').value = btn.dataset.role;
-    });
-  });
-  roleButtons[0].classList.add('border-ink', 'bg-ink', 'text-parchment');
 
   // Login submit
   loginForm.addEventListener('submit', async (e) => {
@@ -239,79 +248,82 @@
     e.preventDefault();
     registerErrorEl.classList.add('hidden');
     registerNoticeEl.classList.add('hidden');
+    verificationSection.classList.add('hidden');
+    
     try {
+      currentUserEmail = document.getElementById('regEmail').value.trim();
+      
       const resp = await Api.register({
         name: document.getElementById('regName').value.trim(),
-        email: document.getElementById('regEmail').value.trim(),
+        email: currentUserEmail,
         password: document.getElementById('regPassword').value,
-        role: document.getElementById('regRole').value,
+        role: 'student',
       });
 
-      // Prefer explicit verification flow: if backend indicates pendingVerification,
-      // or it did not return a token, prompt for the verification code.
-      const needsVerification = resp && (resp.pendingVerification === true || !resp.token);
-      if (needsVerification) {
-        registerNoticeEl.textContent = 'A verification code has been sent to your email. Enter it to complete registration.';
+      // Show inline verification section
+      if (resp && (resp.pendingVerification === true || !resp.token)) {
+        registerSubmitBtn.classList.add('hidden');
+        verificationSection.classList.remove('hidden');
+        registerNoticeEl.textContent = 'A verification code has been sent to your email. Enter it below to complete your registration.';
         registerNoticeEl.classList.remove('hidden');
-        // show in-page modal to collect verification code
-        document.getElementById('verifyEmail').value = document.getElementById('regEmail').value.trim();
         document.getElementById('verifyCode').value = '';
         document.getElementById('verifyError').classList.add('hidden');
-        document.getElementById('verifyModal').classList.remove('hidden');
-
-        // wire up modal buttons (idempotent)
-        document.getElementById('closeVerifyModal').onclick = () => document.getElementById('verifyModal').classList.add('hidden');
-        document.getElementById('cancelVerifyBtn').onclick = () => document.getElementById('verifyModal').classList.add('hidden');
-        document.getElementById('confirmVerifyBtn').onclick = async () => {
-          const code = document.getElementById('verifyCode').value.trim();
-          if (!code) {
-            const el = document.getElementById('verifyError'); el.textContent = 'Please enter the verification code.'; el.classList.remove('hidden'); return;
-          }
-          try {
-            const verifyResp = await Api.verifyEmail({ email: document.getElementById('verifyEmail').value.trim(), code });
-            document.getElementById('verifyModal').classList.add('hidden');
-            if (verifyResp.pendingApproval) {
-              registerNoticeEl.textContent = 'Your email is verified. An admin must approve your student account before you can sign in.';
-              registerNoticeEl.classList.remove('hidden');
-              registerForm.reset();
-              document.getElementById('regRole').value = 'student';
-              roleButtons.forEach((btn) => {
-                btn.classList.remove('border-ink', 'bg-ink', 'text-parchment');
-                btn.classList.add('border-ink/15');
-              });
-              roleButtons[0].classList.add('border-ink', 'bg-ink', 'text-parchment');
-              activateTab('login');
-              document.getElementById('loginEmail').value = document.getElementById('regEmail').value.trim();
-              return;
-            }
-            // After verification, attempt to login (backend should accept credentials now)
-            const { token, user } = await Api.login({
-              email: document.getElementById('regEmail').value.trim(),
-              password: document.getElementById('regPassword').value,
-            });
-            Auth.setSession(token, user);
-            window.location.href = 'dashboard.html';
-          } catch (vErr) {
-            const el = document.getElementById('verifyError'); el.textContent = vErr.message || 'Verification failed.'; el.classList.remove('hidden');
-          }
-        };
+        document.getElementById('verifyCode').focus();
         return;
       }
 
-      // If backend returned a token (auto-login), use it. Otherwise show a fallback notice.
       if (resp && resp.token && resp.user) {
         Auth.setSession(resp.token, resp.user);
         window.location.href = 'dashboard.html';
         return;
       }
 
-      // If we reach here, the server didn't return a token and didn't indicate
-      // explicit pending verification. Show a generic notice prompting manual verify.
       registerNoticeEl.textContent = 'Registration received. Please check your email for a verification code.';
       registerNoticeEl.classList.remove('hidden');
     } catch (err) {
       registerErrorEl.textContent = err.message || 'Could not create account.';
       registerErrorEl.classList.remove('hidden');
+    }
+  });
+
+  // Verify button click
+  document.getElementById('confirmVerifyBtn').addEventListener('click', async () => {
+    const code = document.getElementById('verifyCode').value.trim();
+    if (!code) {
+      const el = document.getElementById('verifyError');
+      el.textContent = 'Please enter the verification code.';
+      el.classList.remove('hidden');
+      return;
+    }
+    try {
+      const verifyResp = await Api.verifyEmail({
+        email: currentUserEmail,
+        code
+      });
+      
+      if (verifyResp.pendingApproval) {
+        registerNoticeEl.textContent = '✅ Email verified! An admin must approve your account before you can sign in. Please wait for admin approval.';
+        registerNoticeEl.classList.remove('hidden');
+        verificationSection.classList.add('hidden');
+        registerSubmitBtn.classList.remove('hidden');
+        registerForm.reset();
+        document.getElementById('regRole').value = 'student';
+        // Auto-fill email in login form
+        document.getElementById('loginEmail').value = currentUserEmail;
+        return;
+      }
+      
+      // After verification, try to login
+      const { token, user } = await Api.login({
+        email: currentUserEmail,
+        password: document.getElementById('regPassword').value,
+      });
+      Auth.setSession(token, user);
+      window.location.href = 'dashboard.html';
+    } catch (vErr) {
+      const el = document.getElementById('verifyError');
+      el.textContent = vErr.message || 'Verification failed.';
+      el.classList.remove('hidden');
     }
   });
 </script>

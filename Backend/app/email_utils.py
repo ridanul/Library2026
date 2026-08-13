@@ -29,7 +29,15 @@ def send_verification_email(to_email: str, code: str):
     msg.set_content(body)
 
     if not SMTP_HOST or not SMTP_PORT or not SMTP_USER or not SMTP_PASS:
-        print(f"[email_utils] SMTP not configured — would send to {to_email}: {code}")
+        # Development mode - print to console
+        print("\n" + "="*60)
+        print("📧 EMAIL VERIFICATION CODE (Development Mode)")
+        print("="*60)
+        print(f"To: {to_email}")
+        print(f"Subject: {subject}")
+        print(f"Verification Code: {code}")
+        print(f"Expires in: 15 minutes")
+        print("="*60 + "\n")
         return
 
     context = ssl.create_default_context()
@@ -44,5 +52,6 @@ def send_verification_email(to_email: str, code: str):
             with smtplib.SMTP_SSL(SMTP_HOST, SMTP_PORT, context=context, timeout=10) as server:
                 server.login(SMTP_USER, SMTP_PASS)
                 server.send_message(msg)
+        print(f"✅ [email_utils] Email sent successfully to {to_email}")
     except Exception as e:
-        print(f"[email_utils] Failed to send email: {e}")
+        print(f"❌ [email_utils] Failed to send email to {to_email}: {e}")
