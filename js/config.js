@@ -4,7 +4,7 @@
 // so the frontend can be reviewed/demoed on its own.
 // ---------------------------------------------------------------------------
 window.LIB_CONFIG = {
-  API_BASE: "https://api.has-ib.dev/api",  // Local development server
+  API_BASE: "https://api.library.ridanul.tech/api",  // Local development server
   DEMO_MODE_FALLBACK: false, // Set to false to catch API errors for debugging
   ENDPOINTS: {
     register: "/auth/register",          // POST  {name,email,password,role}
