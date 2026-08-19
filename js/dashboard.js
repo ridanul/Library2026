@@ -4,18 +4,24 @@ const state = {
   user: Auth.getUser(),
   books: [],
   view: "browse",
+  browse: { page: 1, pageSize: 9, total: 0 },
+  manage: { page: 1, pageSize: 10, total: 0 },
+  admin: {
+    settings: { fine_per_day: 0.5, grace_days: 14, late_return_default_fine: 5 },
+    users: [],
+  },
 };
 
-// ---------------------------------------------------------------------------
-// Header / nav setup
-// ---------------------------------------------------------------------------
-document.getElementById("headerUserName").textContent = state.user?.name || "Reader";
-document.getElementById("headerUserRole").textContent = state.user?.role || "student";
-document.getElementById("logoutBtn").addEventListener("click", () => Auth.logout());
+const headerUserName = document.getElementById("headerUserName");
+const headerUserRole = document.getElementById("headerUserRole");
+const logoutBtn = document.getElementById("logoutBtn");
+headerUserName.textContent = state.user?.name || "Reader";
+headerUserRole.textContent = state.user?.role || "student";
+logoutBtn.addEventListener("click", () => Auth.logout());
 
 if (Auth.isAdmin()) {
-  document.getElementById("manageNavBtn").classList.remove("hidden");
-  document.getElementById("manageNavBtnMobile").classList.remove("hidden");
+  document.getElementById("manageNavBtn")?.classList.remove("hidden");
+  document.getElementById("manageNavBtnMobile")?.classList.remove("hidden");
 }
 
 document.querySelectorAll(".nav-btn").forEach((btn) => {
@@ -25,13 +31,7 @@ document.querySelectorAll(".nav-btn").forEach((btn) => {
 function setView(view) {
   state.view = view;
   document.querySelectorAll(".view-panel").forEach((p) => p.classList.add("hidden"));
-  document.getElementById(`view-${view}`).classList.remove("hidden");
-  // document.querySelectorAll(".nav-btn").forEach((b) => {
-  //   const active = b.dataset.view === view;
-  //   b.classList.toggle("bg-parchment", active);
-  //   b.classList.toggle("text-ink", active);
-  //   b.classList.toggle("text-parchment/70", !active);
-  // });
+  document.getElementById(`view-${view}`)?.classList.remove("hidden");
   if (view === "recommendations") loadRecommendations();
   if (view === "notifications") loadNotifications();
   if (view === "manage") loadManageTable();
@@ -46,9 +46,26 @@ function toast(msg) {
   toast._t = setTimeout(() => el.classList.add("hidden"), 2400);
 }
 
-// ---------------------------------------------------------------------------
-// Book card renderer (shared by browse + recommendations)
-// ---------------------------------------------------------------------------
+function renderPager(container, { page, pageSize, total, onPageChange }) {
+  const pageCount = Math.max(1, Math.ceil((total || 0) / pageSize));
+  if (!container) return;
+  if (total <= pageSize) {
+    container.innerHTML = "";
+    return;
+  }
+  const prevDisabled = page <= 1 ? "disabled opacity-50 cursor-not-allowed" : "";
+  const nextDisabled = page >= pageCount ? "disabled opacity-50 cursor-not-allowed" : "";
+  container.innerHTML = `
+    <button data-page="${page - 1}" class="px-3 py-1.5 border border-ink/20 rounded text-sm ${prevDisabled}">Prev</button>
+    <span class="text-xs font-mono text-charcoal/60 px-2">Page ${page} of ${pageCount}</span>
+    <button data-page="${page + 1}" class="px-3 py-1.5 border border-ink/20 rounded text-sm ${nextDisabled}">Next</button>
+  `;
+  container.querySelectorAll("button[data-page]").forEach((btn) => {
+    if (btn.hasAttribute("disabled")) return;
+    btn.addEventListener("click", () => onPageChange(Number(btn.dataset.page)));
+  });
+}
+
 function bookCard(book, { showBorrow = true } = {}) {
   const stampClass = book.available > 0 ? "stamp-available" : "stamp-out";
   const stampText = book.available > 0 ? `${book.available} available` : "checked out";
@@ -75,25 +92,34 @@ function escapeHtml(str) {
   return String(str).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
 }
 
-// ---------------------------------------------------------------------------
-// Browse / search
-// ---------------------------------------------------------------------------
 const bookGrid = document.getElementById("bookGrid");
 const bookEmpty = document.getElementById("bookEmpty");
 const searchInput = document.getElementById("searchInput");
 const genreFilter = document.getElementById("genreFilter");
 let searchDebounce;
+let genreFilterPopulated = false;
 
 async function loadBooks() {
   try {
-    const { items } = await Api.listBooks({
+    const { items, total } = await Api.listBooks({
       search: searchInput.value.trim(),
       genre: genreFilter.value,
+      page: state.browse.page,
+      page_size: state.browse.pageSize,
     });
     state.books = items;
+    state.browse.total = total;
     renderBookGrid(items);
     populateGenreFilter(items);
-    if (window.__LIB_DEMO_ACTIVE__) document.getElementById("demoBadge").classList.remove("hidden");
+    renderPager(document.getElementById("browsePagination"), {
+      page: state.browse.page,
+      pageSize: state.browse.pageSize,
+      total,
+      onPageChange: (nextPage) => {
+        state.browse.page = nextPage;
+        loadBooks();
+      },
+    });
   } catch (err) {
     toast(err.message || "Could not load books.");
   }
@@ -105,7 +131,6 @@ function renderBookGrid(items) {
   bookGrid.querySelectorAll("[data-borrow]").forEach((btn) => {
     btn.addEventListener("click", () => borrowBook(btn.dataset.borrow));
   });
-  // Attach detail handlers
   bookGrid.querySelectorAll("[data-detail]").forEach((el) => {
     el.addEventListener("click", (e) => {
       if (e.target.closest('[data-borrow]')) return;
@@ -114,7 +139,6 @@ function renderBookGrid(items) {
   });
 }
 
-let genreFilterPopulated = false;
 function populateGenreFilter(items) {
   if (genreFilterPopulated) return;
   const genres = [...new Set(items.map((b) => b.genre).filter(Boolean))].sort();
@@ -127,6 +151,7 @@ async function borrowBook(id) {
     await Api.borrowBook(id);
     toast("Borrowed — enjoy the read.");
     loadBooks();
+    if (state.view === "manage") loadManageTable();
   } catch (err) {
     toast(err.message || "Could not borrow that book.");
   }
@@ -134,114 +159,119 @@ async function borrowBook(id) {
 
 searchInput.addEventListener("input", () => {
   clearTimeout(searchDebounce);
-  searchDebounce = setTimeout(loadBooks, 300);
+  searchDebounce = setTimeout(() => {
+    state.browse.page = 1;
+    loadBooks();
+  }, 300);
 });
-genreFilter.addEventListener("change", loadBooks);
-// If a search query is present on the landing page, pick it up before first load
+
+genreFilter.addEventListener("change", () => {
+  state.browse.page = 1;
+  loadBooks();
+});
+
 const urlParams = new URLSearchParams(window.location.search);
-if (urlParams.get('q')) {
-  searchInput.value = urlParams.get('q');
+if (urlParams.get("q")) {
+  searchInput.value = urlParams.get("q");
 }
 loadBooks();
 
-// ---------------------------------------------------------------------------
-// Book detail modal
-// ---------------------------------------------------------------------------
-const bookDetailModal = document.getElementById('bookDetailModal');
-if (bookDetailModal) {
-  const closeDetail = document.getElementById('closeDetailModal');
-  const detailCover = document.getElementById('detailCover');
-  const detailTitle = document.getElementById('detailTitle');
-  const detailAuthor = document.getElementById('detailAuthor');
-  const detailIsbn = document.getElementById('detailIsbn');
-  const detailDescription = document.getElementById('detailDescription');
-  const detailAvailable = document.getElementById('detailAvailable');
-  const detailBorrowBtn = document.getElementById('detailBorrowBtn');
-  closeDetail && closeDetail.addEventListener('click', () => bookDetailModal.classList.add('hidden'));
+const bookDetailModal = document.getElementById("bookDetailModal");
+const closeDetail = document.getElementById("closeDetailModal");
+const detailCover = document.getElementById("detailCover");
+const detailTitle = document.getElementById("detailTitle");
+const detailAuthor = document.getElementById("detailAuthor");
+const detailIsbn = document.getElementById("detailIsbn");
+const detailDescription = document.getElementById("detailDescription");
+const detailAvailable = document.getElementById("detailAvailable");
+const detailBorrowBtn = document.getElementById("detailBorrowBtn");
+closeDetail?.addEventListener("click", () => bookDetailModal?.classList.add("hidden"));
 
-  async function openBookDetail(id) {
-    try {
-      const book = await Api.getBook(id);
-      detailCover.src = book.cover_url || 'https://via.placeholder.com/160x220?text=Cover';
-      detailTitle.textContent = book.title;
-      detailAuthor.textContent = book.author;
-      detailIsbn.textContent = `ISBN: ${book.isbn}`;
-      detailDescription.textContent = book.description || '';
-      detailAvailable.textContent = book.available > 0 ? `${book.available} available` : 'checked out';
-      detailBorrowBtn.disabled = book.available < 1;
-      detailBorrowBtn.onclick = async () => {
-        try {
-          await Api.borrowBook(book.id);
-          toast('Borrowed — enjoy the read.');
-          bookDetailModal.classList.add('hidden');
-          loadBooks();
-        } catch (err) {
-          toast(err.message || 'Could not borrow that book.');
-        }
-      };
-      bookDetailModal.classList.remove('hidden');
-    } catch (err) {
-      toast(err.message || 'Could not load book details.');
-    }
+async function openBookDetail(id) {
+  try {
+    const book = await Api.getBook(id);
+    detailCover.src = book.cover_url || "https://via.placeholder.com/160x220?text=Cover";
+    detailTitle.textContent = book.title;
+    detailAuthor.textContent = book.author;
+    detailIsbn.textContent = `ISBN: ${book.isbn}`;
+    detailDescription.textContent = book.description || "";
+    detailAvailable.textContent = book.available > 0 ? `${book.available} available` : "checked out";
+    detailBorrowBtn.disabled = book.available < 1;
+    detailBorrowBtn.onclick = async () => {
+      try {
+        await Api.borrowBook(book.id);
+        toast("Borrowed — enjoy the read.");
+        bookDetailModal.classList.add("hidden");
+        loadBooks();
+      } catch (err) {
+        toast(err.message || "Could not borrow that book.");
+      }
+    };
+    bookDetailModal.classList.remove("hidden");
+  } catch (err) {
+    toast(err.message || "Could not load book details.");
   }
-  window.openBookDetail = openBookDetail;
 }
 
-// ---------------------------------------------------------------------------
-// Settings modal (admin)
-// ---------------------------------------------------------------------------
-const settingsModal = document.getElementById('settingsModal');
-const openSettingsBtn = document.getElementById('openSettingsBtn');
+const settingsModal = document.getElementById("settingsModal");
+const openSettingsBtn = document.getElementById("openSettingsBtn");
 if (openSettingsBtn && settingsModal) {
-  openSettingsBtn.addEventListener('click', async () => {
+  openSettingsBtn.addEventListener("click", async () => {
     try {
       const s = await Api.getAdminSettings();
-      document.getElementById('settingFine').value = (s.fine_per_day ?? 0).toFixed ? (s.fine_per_day).toFixed(2) : s.fine_per_day;
-      document.getElementById('settingGrace').value = s.grace_days ?? 14;
-      settingsModal.classList.remove('hidden');
+      state.admin.settings = {
+        fine_per_day: Number(s.fine_per_day ?? 0),
+        grace_days: Number(s.grace_days ?? 14),
+        late_return_default_fine: Number(s.late_return_default_fine ?? 5),
+      };
+      document.getElementById("settingFine").value = state.admin.settings.fine_per_day.toFixed(2);
+      document.getElementById("settingGrace").value = String(state.admin.settings.grace_days);
+      document.getElementById("settingLateDefaultFine").value = state.admin.settings.late_return_default_fine.toFixed(2);
+      settingsModal.classList.remove("hidden");
     } catch (err) {
-      toast(err.message || 'Could not load settings.');
+      toast(err.message || "Could not load settings.");
     }
   });
-  document.getElementById('closeSettingsModal').addEventListener('click', () => settingsModal.classList.add('hidden'));
-  document.getElementById('cancelSettingsBtn').addEventListener('click', () => settingsModal.classList.add('hidden'));
-  document.getElementById('saveSettingsBtn').addEventListener('click', async () => {
+  document.getElementById("closeSettingsModal").addEventListener("click", () => settingsModal.classList.add("hidden"));
+  document.getElementById("cancelSettingsBtn").addEventListener("click", () => settingsModal.classList.add("hidden"));
+  document.getElementById("saveSettingsBtn").addEventListener("click", async () => {
     try {
-      const fine = parseFloat(document.getElementById('settingFine').value || 0);
-      const grace = parseInt(document.getElementById('settingGrace').value || 0, 10);
-      await Api.putAdminSettings({ fine_per_day: fine, grace_days: grace });
-      settingsModal.classList.add('hidden');
-      toast('Settings saved.');
+      const fine = parseFloat(document.getElementById("settingFine").value || "0");
+      const grace = parseInt(document.getElementById("settingGrace").value || "0", 10);
+      const lateDefault = parseFloat(document.getElementById("settingLateDefaultFine").value || "0");
+      await Api.putAdminSettings({ fine_per_day: fine, grace_days: grace, late_return_default_fine: lateDefault });
+      state.admin.settings = { fine_per_day: fine, grace_days: grace, late_return_default_fine: lateDefault };
+      settingsModal.classList.add("hidden");
+      toast("Settings saved.");
       loadAdminPanels();
     } catch (err) {
-      toast(err.message || 'Could not save settings.');
+      toast(err.message || "Could not save settings.");
     }
   });
 }
 
-// Fine modal handlers
-const fineModal = document.getElementById('fineModal');
+const fineModal = document.getElementById("fineModal");
 if (fineModal) {
-  document.getElementById('closeFineModal').addEventListener('click', () => fineModal.classList.add('hidden'));
-  document.getElementById('cancelFineBtn').addEventListener('click', () => fineModal.classList.add('hidden'));
-  document.getElementById('saveFineBtn').addEventListener('click', async () => {
+  document.getElementById("closeFineModal").addEventListener("click", () => fineModal.classList.add("hidden"));
+  document.getElementById("cancelFineBtn").addEventListener("click", () => fineModal.classList.add("hidden"));
+  document.getElementById("saveFineBtn").addEventListener("click", async () => {
     try {
-      const userId = document.getElementById('fineUserId').value;
-      const amount = parseFloat(document.getElementById('fineAmount').value || 0);
-      const reason = document.getElementById('fineReason').value || 'Overdue fine';
-      await Api.createFine(userId, { amount, reason });
-      fineModal.classList.add('hidden');
-      toast('Fine applied.');
+      const userId = document.getElementById("fineUserId").value;
+      const rawAmount = document.getElementById("fineAmount").value;
+      const payload = {
+        reason: document.getElementById("fineReason").value || "Overdue fine",
+      };
+      if (rawAmount !== "") payload.amount = parseFloat(rawAmount);
+      await Api.createFine(userId, payload);
+      fineModal.classList.add("hidden");
+      toast("Fine applied.");
       loadAdminPanels();
     } catch (err) {
-      toast(err.message || 'Could not apply fine.');
+      toast(err.message || "Could not apply fine.");
     }
   });
 }
 
-// ---------------------------------------------------------------------------
-// Recommendations + interests
-// ---------------------------------------------------------------------------
 const ALL_GENRES = ["Sci-Fi", "Fantasy", "Mystery", "Non-Fiction", "Romance", "History", "Poetry", "Biography"];
 
 async function loadRecommendations() {
@@ -260,7 +290,7 @@ async function loadRecommendations() {
   }
 }
 
-document.getElementById("editInterestsBtn").addEventListener("click", openInterestsModal);
+document.getElementById("editInterestsBtn")?.addEventListener("click", openInterestsModal);
 async function openInterestsModal() {
   const { genres } = await Api.getInterests();
   const opts = document.getElementById("interestOptions");
@@ -281,10 +311,11 @@ async function openInterestsModal() {
   });
   document.getElementById("interestsModal").classList.remove("hidden");
 }
-document.getElementById("closeInterestsModal").addEventListener("click", () =>
+
+document.getElementById("closeInterestsModal")?.addEventListener("click", () =>
   document.getElementById("interestsModal").classList.add("hidden")
 );
-document.getElementById("saveInterestsBtn").addEventListener("click", async () => {
+document.getElementById("saveInterestsBtn")?.addEventListener("click", async () => {
   const selected = [...document.querySelectorAll(".interest-chip.text-brass")].map((c) => c.dataset.genre);
   try {
     await Api.setInterests(selected);
@@ -296,9 +327,6 @@ document.getElementById("saveInterestsBtn").addEventListener("click", async () =
   }
 });
 
-// ---------------------------------------------------------------------------
-// Notifications
-// ---------------------------------------------------------------------------
 async function loadNotifications() {
   try {
     const { items } = await Api.getNotifications();
@@ -326,21 +354,22 @@ async function loadNotifications() {
     toast(err.message || "Could not load notifications.");
   }
 }
+
 function refreshNotifDotFrom(items) {
   const hasUnread = items.some((n) => !n.read);
-  document.getElementById("notifDot").classList.toggle("hidden", !hasUnread);
+  document.getElementById("notifDot")?.classList.toggle("hidden", !hasUnread);
 }
+
 async function refreshNotifDot() {
   try {
     const { items } = await Api.getNotifications();
     refreshNotifDotFrom(items);
-  } catch { /* non-critical */ }
+  } catch {
+    // non-critical
+  }
 }
 refreshNotifDot();
 
-// ---------------------------------------------------------------------------
-// Admin: manage collection (add / edit / delete)
-// ---------------------------------------------------------------------------
 const bookModal = document.getElementById("bookModal");
 const bookForm = document.getElementById("bookForm");
 
@@ -358,11 +387,12 @@ function openBookModal(book = null) {
   document.getElementById("genreList").innerHTML = ALL_GENRES.map((g) => `<option value="${g}">`).join("");
   bookModal.classList.remove("hidden");
 }
-document.getElementById("openAddBookBtn").addEventListener("click", () => openBookModal());
-document.getElementById("closeBookModal").addEventListener("click", () => bookModal.classList.add("hidden"));
-document.getElementById("cancelBookModal").addEventListener("click", () => bookModal.classList.add("hidden"));
 
-bookForm.addEventListener("submit", async (e) => {
+document.getElementById("openAddBookBtn")?.addEventListener("click", () => openBookModal());
+document.getElementById("closeBookModal")?.addEventListener("click", () => bookModal.classList.add("hidden"));
+document.getElementById("cancelBookModal")?.addEventListener("click", () => bookModal.classList.add("hidden"));
+
+bookForm?.addEventListener("submit", async (e) => {
   e.preventDefault();
   const id = document.getElementById("bookId").value;
   const payload = {
@@ -391,7 +421,11 @@ bookForm.addEventListener("submit", async (e) => {
 
 async function loadManageTable() {
   try {
-    const { items } = await Api.listBooks({});
+    const { items, total } = await Api.listBooks({
+      page: state.manage.page,
+      page_size: state.manage.pageSize,
+    });
+    state.manage.total = total;
     document.getElementById("manageTableBody").innerHTML = items.map((b) => `
       <tr class="border-t border-ink/5">
         <td class="px-4 py-3 font-medium text-ink">${escapeHtml(b.title)}</td>
@@ -404,9 +438,11 @@ async function loadManageTable() {
           <button data-delete="${b.id}" class="text-xs font-mono text-rust hover:underline">Delete</button>
         </td>
       </tr>`).join("");
+
     document.querySelectorAll("[data-edit]").forEach((btn) =>
-      btn.addEventListener("click", () => openBookModal(state.books.concat(items).find((b) => b.id === btn.dataset.edit)))
+      btn.addEventListener("click", () => openBookModal(items.find((b) => b.id === btn.dataset.edit)))
     );
+
     document.querySelectorAll("[data-delete]").forEach((btn) =>
       btn.addEventListener("click", async () => {
         if (!confirm("Remove this book from the catalog?")) return;
@@ -417,6 +453,17 @@ async function loadManageTable() {
         loadBooks();
       })
     );
+
+    renderPager(document.getElementById("managePagination"), {
+      page: state.manage.page,
+      pageSize: state.manage.pageSize,
+      total,
+      onPageChange: (nextPage) => {
+        state.manage.page = nextPage;
+        loadManageTable();
+      },
+    });
+
     loadAdminPanels();
   } catch (err) {
     toast(err.message || "Could not load the collection.");
@@ -424,11 +471,21 @@ async function loadManageTable() {
 }
 
 async function loadAdminPanels() {
+  if (!Auth.isAdmin()) return;
   try {
-    const [{ items: pendingUsers }, { items: overdueLoans }] = await Promise.all([
+    const [{ items: pendingUsers }, { items: overdueLoans }, usersResp, settingsResp] = await Promise.all([
       Api.listPendingUsers(),
       Api.getOverdueLoans(),
+      Api.listUsers(),
+      Api.getAdminSettings(),
     ]);
+
+    state.admin.users = usersResp.items || [];
+    state.admin.settings = {
+      fine_per_day: Number(settingsResp.fine_per_day ?? 0.5),
+      grace_days: Number(settingsResp.grace_days ?? 14),
+      late_return_default_fine: Number(settingsResp.late_return_default_fine ?? 5),
+    };
 
     document.getElementById("pendingCount").textContent = pendingUsers.length;
     document.getElementById("overdueCount").textContent = overdueLoans.length;
@@ -454,30 +511,83 @@ async function loadAdminPanels() {
     });
 
     const overdueList = document.getElementById("overdueList");
-    const overdueElHtml = overdueLoans.length
+    overdueList.innerHTML = overdueLoans.length
       ? overdueLoans.map((loan) => `
         <div class="rounded border border-rust/20 bg-rust/5 p-3">
           <p class="font-medium text-ink">${escapeHtml(loan.userName)} — ${escapeHtml(loan.bookTitle)}</p>
           <p class="text-xs font-mono text-charcoal/50">Due ${escapeHtml(loan.due_date)} · not returned</p>
-          <div class="mt-2 flex items-center justify-between">
-            <div class="text-xs text-charcoal/60">Overdue days: ${escapeHtml(String(loan.days_overdue || '—'))} · Fine: ${loan.fine ? ('$' + Number(loan.fine).toFixed(2)) : '—'}</div>
-            <button data-charge="${loan.userId}" data-amount="${loan.fine || ''}" class="text-xs font-mono bg-ink text-parchment px-3 py-1.5 rounded hover:bg-ink/90">Charge fine</button>
+          <div class="mt-2 flex items-center justify-between gap-2">
+            <div class="text-xs text-charcoal/60">Overdue days: ${escapeHtml(String(loan.days_overdue || "—"))} · Fine: ${loan.fine ? ("$" + Number(loan.fine).toFixed(2)) : "—"}</div>
+            <button data-charge="${loan.userId}" data-amount="${loan.fine ?? ""}" class="text-xs font-mono bg-ink text-parchment px-3 py-1.5 rounded hover:bg-ink/90">Charge fine</button>
           </div>
         </div>`).join("")
       : `<p class="text-sm text-charcoal/50">No overdue loans right now.</p>`;
-    overdueList.innerHTML = overdueElHtml;
-    overdueList.querySelectorAll('[data-charge]').forEach((btn) => {
-      btn.addEventListener('click', () => {
+
+    overdueList.querySelectorAll("[data-charge]").forEach((btn) => {
+      btn.addEventListener("click", () => {
         const userId = btn.dataset.charge;
-        const amount = btn.dataset.amount || '';
-        document.getElementById('fineUserId').value = userId;
-        document.getElementById('fineAmount').value = amount;
-        document.getElementById('fineReason').value = 'Overdue fine';
-        document.getElementById('fineModal').classList.remove('hidden');
+        const amount = btn.dataset.amount || String(state.admin.settings.late_return_default_fine.toFixed(2));
+        document.getElementById("fineUserId").value = userId;
+        document.getElementById("fineAmount").value = amount;
+        document.getElementById("fineReason").value = "Overdue fine";
+        document.getElementById("fineModal").classList.remove("hidden");
       });
     });
+
+    initAdminNotificationForm();
   } catch (err) {
     document.getElementById("pendingUsersList").innerHTML = `<p class="text-sm text-rust">${escapeHtml(err.message || "Could not load admin panels.")}</p>`;
     document.getElementById("overdueList").innerHTML = "";
   }
+}
+
+function initAdminNotificationForm() {
+  const targetSelect = document.getElementById("notifTargetSelect");
+  const userWrap = document.getElementById("notifUserSelectWrap");
+  const userSelect = document.getElementById("notifUserSelect");
+  const sendBtn = document.getElementById("sendAdminNotificationBtn");
+  const status = document.getElementById("adminNotifStatus");
+  if (!targetSelect || !userWrap || !userSelect || !sendBtn) return;
+
+  userSelect.innerHTML = state.admin.users.map((u) =>
+    `<option value="${u.id}">${escapeHtml(u.name)} (${escapeHtml(u.email)})</option>`
+  ).join("");
+
+  const syncTarget = () => {
+    const isUser = targetSelect.value === "user";
+    userWrap.classList.toggle("hidden", !isUser);
+  };
+
+  if (!targetSelect.dataset.bound) {
+    targetSelect.addEventListener("change", syncTarget);
+    sendBtn.addEventListener("click", async () => {
+      const title = document.getElementById("notifTitleInput").value.trim();
+      const body = document.getElementById("notifBodyInput").value.trim();
+      const target = targetSelect.value;
+      if (!title || !body) {
+        status.textContent = "Title and message are required.";
+        status.className = "text-sm text-rust";
+        return;
+      }
+      const payload = { title, body, target };
+      if (target === "user") payload.user_id = userSelect.value;
+      try {
+        const result = await Api.createAdminNotification(payload);
+        status.textContent = `Sent to ${result.count} recipient(s).`;
+        status.className = "text-sm text-sage";
+        document.getElementById("notifTitleInput").value = "";
+        document.getElementById("notifBodyInput").value = "";
+      } catch (err) {
+        status.textContent = err.message || "Could not send notification.";
+        status.className = "text-sm text-rust";
+      }
+    });
+    targetSelect.dataset.bound = "1";
+  }
+
+  syncTarget();
+}
+
+if (Auth.isAdmin()) {
+  loadAdminPanels();
 }

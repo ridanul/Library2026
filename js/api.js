@@ -76,6 +76,7 @@ var Api = (() => {
     getInterests: () => request(ENDPOINTS.interests),
     setInterests: (genres) => request(ENDPOINTS.interests, { method: "POST", body: { genres } }),
     listPendingUsers: () => request("/admin/users/pending"),
+    listUsers: () => request("/admin/users"),
     approveUser: (id) => request(`/admin/users/${id}/approve`, { method: "POST" }),
     getOverdueLoans: () => request("/admin/overdue"),
     chargeFine: (userId, data) => request(`/admin/users/${userId}/fine`, { method: "POST", body: data }),
@@ -89,6 +90,7 @@ var Api = (() => {
     payFine: (fineId) => request(`/fines/${fineId}/pay`, { method: "POST", body: {} }),
     getNotifications: () => request(ENDPOINTS.notifications),
     markNotificationRead: (id) => request(ENDPOINTS.notificationRead(id), { method: "POST" }),
+    createAdminNotification: (data) => request("/admin/notifications", { method: "POST", body: data }),
   };
 })();
 window.Api = Api;
