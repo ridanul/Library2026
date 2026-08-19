@@ -39,12 +39,12 @@ def run(db: Session):
     student = models.User(
         name="Priya Nair", email="student@demo.io",
         hashed_password=hash_password("student123"),
-        role="student", genres="Sci-Fi,Mystery",
+        role="student", genres="Sci-Fi,Mystery", email_verified=True,
     )
     admin = models.User(
         name="Marcus Webb", email="admin@demo.io",
         hashed_password=hash_password("admin123"),
-        role="admin", genres="",
+        role="admin", genres="", email_verified=True,
     )
     db.add_all([student, admin])
     db.flush()  # assign ids before we reference student.id below
@@ -72,4 +72,5 @@ def run(db: Session):
     # Default app settings
     db.add(models.AppSetting(key="fine_per_day", value="0.5"))
     db.add(models.AppSetting(key="grace_days", value="14"))
+    db.add(models.AppSetting(key="late_return_default_fine", value="5.0"))
     db.commit()

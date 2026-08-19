@@ -113,6 +113,13 @@ class NotificationListOut(BaseModel):
     items: List[NotificationOut]
 
 
+class AdminNotificationCreateIn(BaseModel):
+    title: str = Field(min_length=1, max_length=120)
+    body: str = Field(min_length=1, max_length=2000)
+    target: Literal["all_students", "all_users", "user"] = "all_students"
+    user_id: Optional[str] = None
+
+
 class RecommendationsOut(BaseModel):
     items: List[BookOut]
 

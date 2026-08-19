@@ -136,6 +136,8 @@ def resend_verification(payload: schemas.ResendVerifyIn, db: Session = Depends(g
     user = db.query(models.User).filter(models.User.email == payload.email).first()
     if not user:
         raise HTTPException(status_code=404, detail="User not found.")
+    if getattr(user, "email_verified", False):
+        raise HTTPException(status_code=400, detail="Email is already verified.")
     from datetime import datetime, timedelta
     code = f"{__import__('random').randint(100000,999999)}"
     expires = (datetime.utcnow() + timedelta(minutes=15)).isoformat()
@@ -178,6 +180,12 @@ def list_pending_users(db: Session = Depends(get_db), admin: models.User = Depen
         .order_by(models.User.name.asc())
         .all()
     )
+    return {"items": [user_out(u) for u in users]}
+
+
+@app.get("/api/admin/users")
+def list_users(db: Session = Depends(get_db), admin: models.User = Depends(require_admin)):
+    users = db.query(models.User).order_by(models.User.name.asc()).all()
     return {"items": [user_out(u) for u in users]}
 
 
@@ -263,6 +271,7 @@ def get_admin_settings(db: Session = Depends(get_db), admin: models.User = Depen
     return {
         "fine_per_day": float(get_setting(db, "fine_per_day", "0.5")),
         "grace_days": int(get_setting(db, "grace_days", "14")),
+        "late_return_default_fine": float(get_setting(db, "late_return_default_fine", "5.0")),
     }
 
 
@@ -272,6 +281,8 @@ def put_admin_settings(payload: dict, db: Session = Depends(get_db), admin: mode
         set_setting(db, "fine_per_day", str(float(payload["fine_per_day"])))
     if "grace_days" in payload:
         set_setting(db, "grace_days", str(int(payload["grace_days"])))
+    if "late_return_default_fine" in payload:
+        set_setting(db, "late_return_default_fine", str(float(payload["late_return_default_fine"])))
     return get_admin_settings(db, admin)
 
 
@@ -280,10 +291,16 @@ def charge_fine(user_id: str, payload: dict, db: Session = Depends(get_db), admi
     user = db.query(models.User).filter(models.User.id == user_id).first()
     if not user:
         raise HTTPException(status_code=404, detail="User not found.")
-    try:
-        amount = float(payload.get("amount", 0))
-    except Exception:
-        raise HTTPException(status_code=400, detail="Invalid amount.")
+    raw_amount = payload.get("amount")
+    if raw_amount in (None, ""):
+        amount = float(get_setting(db, "late_return_default_fine", "5.0"))
+    else:
+        try:
+            amount = float(raw_amount)
+        except Exception:
+            raise HTTPException(status_code=400, detail="Invalid amount.")
+    if amount < 0:
+        raise HTTPException(status_code=400, detail="Amount cannot be negative.")
     reason = payload.get("reason", "Overdue fine")
     from datetime import date
     # create a Fine record
@@ -305,6 +322,37 @@ def charge_fine(user_id: str, payload: dict, db: Session = Depends(get_db), admi
 @app.post("/api/admin/users/{user_id}/fines")
 def create_fine_alias(user_id: str, payload: dict, db: Session = Depends(get_db), admin: models.User = Depends(require_admin)):
     return charge_fine(user_id, payload, db, admin)
+
+
+@app.post("/api/admin/notifications")
+def create_admin_notification(payload: schemas.AdminNotificationCreateIn, db: Session = Depends(get_db), admin: models.User = Depends(require_admin)):
+    title = payload.title.strip()
+    body = payload.body.strip()
+    if not title or not body:
+        raise HTTPException(status_code=400, detail="Title and body are required.")
+
+    if payload.target == "user":
+        if not payload.user_id:
+            raise HTTPException(status_code=400, detail="user_id is required when target is 'user'.")
+        recipients = db.query(models.User).filter(models.User.id == payload.user_id).all()
+    elif payload.target == "all_users":
+        recipients = db.query(models.User).all()
+    else:
+        recipients = db.query(models.User).filter(models.User.role == "student").all()
+
+    if not recipients:
+        raise HTTPException(status_code=404, detail="No recipients found.")
+
+    for recipient in recipients:
+        db.add(models.Notification(
+            user_id=recipient.id,
+            title=title,
+            body=body,
+            read=False,
+            created_at=date.today(),
+        ))
+    db.commit()
+    return {"status": "ok", "count": len(recipients)}
 
 
 @app.get("/api/fines", response_model=schemas.FineListOut)
