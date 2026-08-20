@@ -20,6 +20,7 @@ the header when this happens. Demo logins:
    ```python
    from fastapi.staticfiles import StaticFiles
    app.mount("/", StaticFiles(directory="library-frontend", html=True), name="frontend")
+  ```
 
 ## Backend (FastAPI)
 
@@ -35,7 +36,46 @@ API additions in this fork:
 - Fines management: admins can create fines and users can list/pay fines (`/admin/users/{id}/fines`, `/fines`, `/fines/{id}/pay`).
 
 If you don't want the demo mock and are testing locally, ensure `js/config.js` points to your running API and that CORS is configured.
-   ```
+
+## Deploy On Heroku
+
+This repository is now set up to run as a single Heroku web dyno serving both:
+
+- FastAPI API on `/api/...`
+- Static frontend pages and assets from the same app
+
+### One-time setup
+
+1. Create an app:
+  ```bash
+  heroku create your-app-name
+  ```
+2. Add Postgres (recommended for production):
+  ```bash
+  heroku addons:create heroku-postgresql:mini
+  ```
+3. Set a secure JWT secret:
+  ```bash
+  heroku config:set SECRET_KEY="replace-with-a-long-random-secret"
+  ```
+
+### Deploy
+
+```bash
+git push heroku main
+```
+
+### Open
+
+```bash
+heroku open
+```
+
+### Notes
+
+- Heroku provides `PORT` automatically; the `Procfile` handles startup.
+- `DATABASE_URL` is used automatically (including legacy `postgres://` conversion).
+- The frontend calls `/api` on the same host in deployed environments.
 
 ## Files
 

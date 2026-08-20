@@ -1,11 +1,13 @@
 from datetime import date
 from typing import Optional
+from pathlib import Path
 
 import os
 
 from fastapi import FastAPI, Depends, HTTPException, status, Query
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
+from fastapi.responses import FileResponse
 from sqlalchemy.orm import Session
 from sqlalchemy import or_
 
@@ -569,11 +571,55 @@ def health():
 
 
 # ===========================================================================
-# Optionally serve the static frontend from the same process.
-# Set FRONTEND_DIR to the built frontend folder (defaults to ../frontend next
-# to this backend) — if it exists, it's mounted at "/" so the whole site runs
-# from a single `uvicorn app.main:app` command. API routes above still win.
+# Optionally serve static frontend assets/pages from the same process.
+# By default this points at the repository root where index/login/dashboard
+# plus css/js live in this project structure.
 # ===========================================================================
-_frontend_dir = os.getenv("FRONTEND_DIR", os.path.join(os.path.dirname(__file__), "..", "..", "frontend"))
-if os.path.isdir(_frontend_dir):
-    app.mount("/", StaticFiles(directory=_frontend_dir, html=True), name="frontend")
+_repo_root = Path(__file__).resolve().parents[2]
+_frontend_dir = Path(os.getenv("FRONTEND_DIR", str(_repo_root))).resolve()
+
+
+def _frontend_file(name: str) -> Path:
+    return _frontend_dir / name
+
+
+def _serve_frontend_page(name: str):
+    target = _frontend_file(name)
+    if not target.is_file():
+        raise HTTPException(status_code=404, detail="Frontend page not found.")
+    return FileResponse(target)
+
+
+if _frontend_dir.is_dir():
+    css_dir = _frontend_file("css")
+    js_dir = _frontend_file("js")
+
+    if css_dir.is_dir():
+        app.mount("/css", StaticFiles(directory=str(css_dir)), name="frontend-css")
+    if js_dir.is_dir():
+        app.mount("/js", StaticFiles(directory=str(js_dir)), name="frontend-js")
+
+
+@app.get("/")
+def frontend_root():
+    return _serve_frontend_page("index.html")
+
+
+@app.get("/index.html")
+def frontend_index_page():
+    return _serve_frontend_page("index.html")
+
+
+@app.get("/login.html")
+def frontend_login_page():
+    return _serve_frontend_page("login.html")
+
+
+@app.get("/dashboard.html")
+def frontend_dashboard_page():
+    return _serve_frontend_page("dashboard.html")
+
+
+@app.get("/favicon.ico")
+def frontend_favicon():
+    return _serve_frontend_page("favicon.ico")
