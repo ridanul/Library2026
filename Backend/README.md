@@ -1,4 +1,4 @@
-# Athenaeum — Library Management System
+# KiU Library Manager
 
 Full stack: the HTML/JS/Tailwind frontend from before, now backed by a real
 FastAPI API with SQLite storage, JWT auth, and student/admin roles.

@@ -21,7 +21,7 @@ from .auth import (
 
 Base.metadata.create_all(bind=engine)
 
-app = FastAPI(title="Athenaeum Library API", version="1.0.0")
+app = FastAPI(title="KiU Library API", version="1.0.0")
 
 # Allow the static frontend (any origin, incl. file:// / localhost dev servers) to call this API.
 app.add_middleware(

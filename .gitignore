@@ -6,7 +6,7 @@ smtp_credentials.env
 Backend/smtp_credentials.env
 
 # Python cache
-__pycache__/
+Backend/app/__pycache__/
 *.py[cod]
 
 # SQLite DB

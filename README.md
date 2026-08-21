@@ -1,143 +1,190 @@
-# Athenaeum — Library Management System (Frontend)
+# KiU Library Manager
 
-Plain HTML / JS / Tailwind frontend, built to sit in front of a FastAPI backend.
-No build step — open it, or serve it as static files from FastAPI itself.
+Full stack: HTML/JS/Tailwind frontend backed by a FastAPI API with SQLite/Postgres storage, JWT auth, email verification, and student/admin roles.
 
-## Run it
+## Features
 
-**Standalone (no backend yet):** just open `login.html` in a browser. The app
-auto-detects that the API is unreachable and switches to **demo mode**, using
-realistic mock data stored in `localStorage`. A "Demo mode" badge appears in
-the header when this happens. Demo logins:
+- **Auth** — register/login with bcrypt-hashed passwords, JWT bearer tokens, and **email verification (OTP)** via Brevo API or SMTP.
+- **Admin approval flow** — new student accounts are `pending` until an admin approves them. Admin accounts can only be assigned by existing admins.
+- **Books** — search by title/author/ISBN, filter by genre, add/edit/delete (admin only), borrow/return with live copy counts.
+- **Recommendations** — pulled from each student's saved genre interests.
+- **Notifications** — when an admin adds a book, every student who has that genre in their interests automatically gets a "new arrival" notification. Admins can also send manual notifications to individual users or all students.
+- **Interests** — students can save/update the genres they follow, which drives both recommendations and notifications.
+- **Fines** — admins can charge fines for overdue loans, view all fines, and students can view/pay their fines.
+- **Admin settings** — configurable fine-per-day, grace period, and default late-return fine.
+- **User management** — admins can approve pending users, promote students to admins, and demote admins back to students (with last-admin protection).
+
+## Project Structure
+
+```
+library-app/
+  Backend/           FastAPI API
+    app/             Application code (main, auth, models, schemas, seed)
+    .env.example     Email + JWT configuration template
+  css/               Frontend styles
+  js/                Frontend JavaScript (config, api, auth, dashboard)
+  index.html         Landing page
+  login.html         Login/Register with OTP verification
+  dashboard.html     Main application dashboard
+  Procfile           Heroku deployment
+  runtime.txt        Python runtime version
+  requirements.txt   Python dependencies
+```
+
+## Run it Locally
+
+### Prerequisites
+- Python 3.10+
+- (Optional) A Brevo API key or SMTP credentials for email verification
+
+### Setup
+
+```bash
+# 1. Clone and enter the project
+git clone https://github.com/ridanul/Library2026.git
+cd Library2026
+
+# 2. Create and activate a virtual environment
+python3 -m venv venv
+source venv/bin/activate        # Windows: venv\Scripts\activate
+
+# 3. Install dependencies
+pip install -r requirements.txt
+
+# 4. Configure environment variables
+cp Backend/.env.example Backend/.env
+# Edit Backend/.env and add your Brevo API key or SMTP credentials
+
+# 5. Run the server
+cd Backend
+uvicorn app.main:app --reload
+```
+
+Open **http://localhost:8000** — the backend automatically serves the frontend from the repository root. The API lives under `http://localhost:8000/api/...`, and interactive docs are at **http://localhost:8000/docs**.
+
+### Demo Accounts
+
+First run creates `Backend/library.db` (SQLite) and seeds it with two demo accounts and a handful of books:
 
 - Student — `student@demo.io` / `student123`
 - Admin — `admin@demo.io` / `admin123`
 
-**With your FastAPI backend:**
-1. Set the real API URL in `js/config.js` → `API_BASE` (default `http://localhost:8000/api`).
-2. Either run FastAPI separately (enable CORS for the origin serving these files),
-   or mount this folder as static files, e.g.:
-   ```python
-   from fastapi.staticfiles import StaticFiles
-   app.mount("/", StaticFiles(directory="library-frontend", html=True), name="frontend")
-  ```
+> **Note:** If email verification is not configured, you may need to manually verify the seeded accounts in the database or use the API docs to log in.
 
-## Backend (FastAPI)
+Delete `library.db` any time to reset to the seed data.
 
-This project includes a FastAPI backend under `Backend/app/`. Quick start using the included virtualenv:
+### Running Frontend and Backend Separately
 
-1. Activate the venv: `source Backend/venv/bin/activate`
-2. Install dependencies (if needed): `python -m pip install -r Backend/requirements.txt`
-3. Run the server: `uvicorn Backend.app.main:app --reload --port 8000`
+If you'd rather serve the frontend from somewhere else (e.g. `file://` or a different dev server), that works too — CORS is wide open. Just point `js/config.js` → `API_BASE` at wherever the backend ends up (e.g. `http://localhost:8000/api`).
 
-API additions in this fork:
-- Email verification during registration (`/auth/verify`).
-- Admin approval flow for student accounts (`/admin/users/pending`, `/admin/users/{id}/approve`).
-- Fines management: admins can create fines and users can list/pay fines (`/admin/users/{id}/fines`, `/fines`, `/fines/{id}/pay`).
+## Email Verification
 
-If you don't want the demo mock and are testing locally, ensure `js/config.js` points to your running API and that CORS is configured.
+Email verification is handled via a 6-digit OTP sent to the user's email address. Two providers are supported (configured in `Backend/.env`):
 
-## Deploy On Heroku
+1. **Brevo API** (recommended) — set `BREVO_API_KEY`, `BREVO_SENDER_EMAIL`, and `BREVO_SENDER_NAME`.
+2. **SMTP** — set `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASS`, and `SMTP_FROM`.
 
-This repository is now set up to run as a single Heroku web dyno serving both:
+If email is not configured, the OTP will be printed to the server console for development.
 
-- FastAPI API on `/api/...`
-- Static frontend pages and assets from the same app
+## API Reference
 
-### One-time setup
+All endpoints are prefixed with `/api`. Authentication is via `Authorization: Bearer <token>`.
 
-1. Create an app:
-  ```bash
-  heroku create your-app-name
-  ```
-2. Add Postgres (recommended for production):
-  ```bash
-  heroku addons:create heroku-postgresql:mini
-  ```
-3. Set a secure JWT secret:
-  ```bash
-  heroku config:set SECRET_KEY="replace-with-a-long-random-secret"
-  ```
+### Auth
 
-### Deploy
+| Method | Endpoint | Description | Auth |
+|--------|----------|-------------|------|
+| POST | `/auth/register` | Register a new student account | Public |
+| POST | `/auth/verify` | Verify email with OTP code | Public |
+| POST | `/auth/resend-verification` | Resend OTP verification email | Public |
+| POST | `/auth/login` | Login and get JWT token | Public |
+| GET | `/auth/me` | Get current user info | Yes |
+
+### Books
+
+| Method | Endpoint | Description | Auth |
+|--------|----------|-------------|------|
+| GET | `/books?search=&genre=&page=` | List books with optional filters | Yes |
+| GET | `/books/{id}` | Get a single book | Yes |
+| POST | `/books` | Add a new book | Admin |
+| PUT | `/books/{id}` | Update a book | Admin |
+| DELETE | `/books/{id}` | Delete a book | Admin |
+| POST | `/books/{id}/borrow` | Borrow a book | Yes |
+| POST | `/books/{id}/return` | Return a book | Yes |
+
+### Recommendations & Interests
+
+| Method | Endpoint | Description | Auth |
+|--------|----------|-------------|------|
+| GET | `/recommendations` | Get book recommendations based on interests | Yes |
+| GET | `/users/interests` | Get current user's genre interests | Yes |
+| POST | `/users/interests` | Save genre interests | Yes |
+
+### Notifications
+
+| Method | Endpoint | Description | Auth |
+|--------|----------|-------------|------|
+| GET | `/notifications` | List current user's notifications | Yes |
+| POST | `/notifications/{id}/read` | Mark a notification as read | Yes |
+
+### Fines
+
+| Method | Endpoint | Description | Auth |
+|--------|----------|-------------|------|
+| GET | `/fines` | List current user's fines | Yes |
+| POST | `/fines/{id}/pay` | Mark a fine as paid | Yes |
+
+### Admin
+
+| Method | Endpoint | Description | Auth |
+|--------|----------|-------------|------|
+| GET | `/admin/users/pending` | List pending student accounts | Admin |
+| GET | `/admin/users` | List all users | Admin |
+| POST | `/admin/users/{id}/approve` | Approve a pending student | Admin |
+| POST | `/admin/users/{id}/promote` | Promote a student to admin | Admin |
+| POST | `/admin/users/{id}/demote` | Demote an admin to student | Admin |
+| GET | `/admin/overdue` | List overdue loans with fines | Admin |
+| GET | `/admin/settings` | Get library settings | Admin |
+| PUT | `/admin/settings` | Update library settings | Admin |
+| POST | `/admin/users/{id}/fine` | Charge a fine to a user | Admin |
+| POST | `/admin/users/{id}/fines` | Alias for charging a fine | Admin |
+| GET | `/admin/fines` | List all fines | Admin |
+| POST | `/admin/notifications` | Send a notification to users | Admin |
+
+### Health
+
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| GET | `/health` | Health check |
+
+## Deployment
+
+This project is configured for deployment on **Heroku** (see `Procfile` and `runtime.txt`).
 
 ```bash
+# Deploy to Heroku
+heroku create your-app-name
 git push heroku main
 ```
 
-### Open
+### Environment Variables
 
-```bash
-heroku open
-```
+| Variable | Description | Required |
+|----------|-------------|----------|
+| `SECRET_KEY` | JWT signing secret | Yes (production) |
+| `DATABASE_URL` | Database connection string (defaults to SQLite) | No |
+| `BREVO_API_KEY` | Brevo API key for email | No* |
+| `BREVO_SENDER_EMAIL` | Verified sender email | No* |
+| `BREVO_SENDER_NAME` | Sender name | No |
+| `SMTP_HOST` | SMTP server host | No* |
+| `SMTP_PORT` | SMTP server port | No |
+| `SMTP_USER` | SMTP username | No |
+| `SMTP_PASS` | SMTP password | No |
+| `SMTP_FROM` | From email address | No |
+| `FRONTEND_DIR` | Path to frontend files (defaults to repo root) | No |
 
-### Notes
+\* At least one email provider (Brevo API or SMTP) is required for email verification.
 
-- Heroku provides `PORT` automatically; the `Procfile` handles startup.
-- `DATABASE_URL` is used automatically (including legacy `postgres://` conversion).
-- The frontend calls `/api` on the same host in deployed environments.
+## Design Notes
 
-## Files
-
-```
-index.html        redirect to login/dashboard based on session
-login.html         sign in + register, with a Student / Admin role toggle
-dashboard.html      search & browse, recommendations, notifications, admin "Manage" tab
-css/styles.css       fonts + the "due-date stamp" / catalog-card visual language
-js/config.js         API base URL + endpoint map — edit this to match your backend
-js/api.js            fetch wrapper; falls back to js/mock.js when the API is unreachable
-js/mock.js            in-browser mock backend (demo mode only)
-js/auth.js            session helpers (token/user in localStorage, route guards)
-js/dashboard.js       all dashboard behavior
-```
-
-## Expected FastAPI contract
-
-All endpoints are prefixed with `API_BASE` (default `/api`). Auth uses a
-bearer token returned from login/register and sent as `Authorization: Bearer <token>`.
-
-| Method | Path | Body | Notes |
-|---|---|---|---|
-| POST | `/auth/register` | `{name, email, password, role}` | `role` is `"student"` or `"admin"` |
-| POST | `/auth/login` | `{email, password}` | → `{token, user}` |
-| GET | `/auth/me` | — | → `{user}` |
-| GET | `/books?search=&genre=&page=` | — | → `{items, total}` |
-| POST | `/books` | `{title, author, isbn, genre, call_number, copies, description}` | admin only |
-| PUT | `/books/{id}` | partial book fields | admin only |
-| DELETE | `/books/{id}` | — | admin only |
-| POST | `/books/{id}/borrow` | — | decrements `available` |
-| POST | `/books/{id}/return` | — | increments `available` |
-| GET | `/recommendations` | — | → `{items}`, based on the user's saved interests |
-| GET | `/users/interests` | — | → `{genres}` |
-| POST | `/users/interests` | `{genres}` | drives both recommendations and new-book alerts |
-| GET | `/notifications` | — | → `{items}` — e.g. "new book in a followed genre" |
-| POST | `/notifications/{id}/read` | — | marks one as read |
-
-### Suggested `Book` shape
-```json
-{
-  "id": "b1",
-  "title": "Piranesi",
-  "author": "Susanna Clarke",
-  "isbn": "9781635575637",
-  "genre": "Fantasy",
-  "call_number": "FA 823.92 CLA",
-  "copies": 2,
-  "available": 1,
-  "description": "…",
-  "added_at": "2026-08-02"
-}
-```
-
-### Notification behavior
-The intended flow: when an admin adds a book in a given genre, the backend
-should create a notification for every student whose saved interests include
-that genre (see `js/mock.js`'s `route()` for a working reference of this
-exact behavior in-browser).
-
-## Design notes
-Visual language borrows from library card catalogs and due-date ink stamps:
-navy/parchment/brass palette, a serif display face (Fraunces) for headings, and
-monospaced call-number/date labels (IBM Plex Mono) throughout. The recurring
-"stamp" badge (rotated, dashed border) marks availability status and interest
-tags — the one signature element the rest of the UI stays quiet around.
+Visual language borrows from library card catalogs and due-date ink stamps: navy/parchment/brass palette, a serif display face (Fraunces) for headings, and monospaced call-number/date labels (IBM Plex Mono) throughout. The recurring "stamp" badge (rotated, dashed border) marks availability status and interest tags — the one signature element the rest of the UI stays quiet around.
