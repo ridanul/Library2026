@@ -4,7 +4,7 @@
 // so the frontend can be reviewed/demoed on its own.
 // ---------------------------------------------------------------------------
 window.LIB_CONFIG = {
-  API_BASE: window.location.protocol === "file:" ? "http://localhost:8000/api" : "/api",
+  API_BASE: window.location.protocol === "file:" ? "http://localhost:8000/api" : "https://library.ridanul.tech/api",
   DEMO_MODE_FALLBACK: false, // Set to false to catch API errors for debugging
   ENDPOINTS: {
     register: "/auth/register",          // POST  {name,email,password,role}
