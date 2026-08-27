@@ -27,6 +27,7 @@ class User(Base):
     student_id = Column(String, default="")  # university roll/ID, e.g. "221-15-4501"
     card_number = Column(String, default="", index=True)      # library card, e.g. "STU-0001"
     card_expires_on = Column(Date, nullable=True)             # derived from session (+4 years)
+    admin_role = Column(String, default="")  # library role for admins, e.g. "librarian", "cataloger", "circulation"
 
     borrows = relationship("Borrow", back_populates="user")
     notifications = relationship("Notification", back_populates="user")

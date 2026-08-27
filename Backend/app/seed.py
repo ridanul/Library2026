@@ -44,10 +44,12 @@ def run(db: Session):
         card_number="STU-0001", card_expires_on=date(2027, 6, 30),
     )
     teacher = models.User(
+        # Teachers carry no academic session or student ID — those fields are
+        # student-only, consistent with the registration form and profile editor.
         name="Daniel Roy", email="teacher@demo.io",
         hashed_password=hash_password("teacher123"),
         role="teacher", genres="", email_verified=True, status="approved",
-        department="EEE", session="2024-25", student_id="T-3391",
+        department="EEE", session="", student_id="",
         card_number="TCH-0002", card_expires_on=date(2028, 6, 30),
     )
     admin = models.User(
@@ -56,6 +58,7 @@ def run(db: Session):
         role="admin", genres="", email_verified=True,
         department="", session="", student_id="",
         card_number="", card_expires_on=None,
+        admin_role="librarian",
     )
     db.add_all([student, teacher, admin])
     db.flush()  # assign ids before we reference student.id below

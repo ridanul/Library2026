@@ -50,6 +50,10 @@ def ensure_schema():
         _add_column_if_missing(conn, "users", "student_id", "VARCHAR DEFAULT ''")
         _add_column_if_missing(conn, "users", "card_number", "VARCHAR DEFAULT ''")
         _add_column_if_missing(conn, "users", "card_expires_on", "DATE NULL")
+        _add_column_if_missing(conn, "users", "admin_role", "VARCHAR DEFAULT ''")
+        # Existing admin accounts (already seeded) should get a default library
+        # role instead of an empty string.
+        conn.execute(text("UPDATE users SET admin_role = 'librarian' WHERE role = 'admin' AND (admin_role IS NULL OR admin_role = '')"))
         if inspector.has_table("books"):
             _add_column_if_missing(conn, "books", "department", "VARCHAR DEFAULT ''")
             _add_column_if_missing(conn, "books", "session", "VARCHAR DEFAULT ''")

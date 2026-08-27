@@ -55,6 +55,7 @@ def user_out(u: models.User) -> schemas.UserOut:
         card_number=getattr(u, "card_number", "") or "",
         card_valid_until=getattr(u, "card_expires_on", None),
         genres=u.genre_list(),
+        admin_role=getattr(u, "admin_role", "") or "",
     )
 
 
@@ -138,8 +139,9 @@ def register(payload: schemas.RegisterIn, db: Session = Depends(get_db)):
     existing = db.query(models.User).filter(models.User.email == payload.email).first()
     if existing:
         # Account exists but the email was never verified — resume the OTP flow
-        # instead of blocking re-registration.
-        if not getattr(existing, "email_verified", False) and existing.role == "student":
+        # instead of blocking re-registration. Applies to students and teachers
+        # alike (both self-register and need email verification).
+        if not getattr(existing, "email_verified", False) and existing.role in ("student", "teacher"):
             create_and_send_otp(db, existing)
             return {"accountExistsUnverified": True}
         raise HTTPException(status_code=409, detail="An account with that email already exists.")
@@ -156,6 +158,7 @@ def register(payload: schemas.RegisterIn, db: Session = Depends(get_db)):
         department=payload.department or "",
         session=payload.session or "",
         student_id=payload.student_id or "",
+        admin_role="",  # only meaningful for admin accounts
     )
     db.add(user)
     db.flush()  # assign the id before we reference it below
@@ -188,7 +191,9 @@ def verify_email(payload: schemas.VerifyIn, db: Session = Depends(get_db)):
     user.email_verified = True
     db.delete(ev)
     db.commit()
-    return {"status": "ok", "pendingApproval": user.role == "student" and user.status == "pending"}
+    # Both students and teachers need admin approval before they can log in;
+    # only admin accounts (created via promotion, never self-registered) skip it.
+    return {"status": "ok", "pendingApproval": user.role != "admin" and user.status == "pending"}
 
 
 @app.post("/api/auth/resend-verification")
@@ -232,9 +237,18 @@ def update_profile(
         raise HTTPException(status_code=400, detail="Name cannot be empty.")
     if data.get("password"):
         current_user.hashed_password = hash_password(data["password"])
+    # Admins are administrative staff — they never carry an academic session or
+    # student ID, so ignore any values for those fields on admin accounts.
+    if current_user.role == "admin":
+        data["session"] = ""
+        data["student_id"] = ""
     for field in ("name", "department", "session", "student_id"):
         if field in data:
             setattr(current_user, field, data[field])
+    # Only admins may set their own library role (e.g. librarian). Non-admins hold
+    # no admin_role, so this field is ignored for them.
+    if current_user.role == "admin" and "admin_role" in data:
+        current_user.admin_role = data["admin_role"] or ""
     db.commit()
     db.refresh(current_user)
     return user_out(current_user)
@@ -284,6 +298,17 @@ def promote_to_admin(user_id: str, db: Session = Depends(get_db), admin: models.
         raise HTTPException(status_code=400, detail="User is already an admin.")
     user.role = "admin"
     user.status = "approved"
+    # Admins are administrative staff, not students/teachers — they carry no
+    # academic session, student ID, or student-style library card. Clear any
+    # leftover values from their previous role.
+    user.session = ""
+    user.student_id = ""
+    user.card_number = ""
+    user.card_expires_on = None
+    # Assign a default library role when promoting to admin; can be edited in
+    # the admin's profile afterwards.
+    if not getattr(user, "admin_role", ""):
+        user.admin_role = "librarian"
     db.commit()
     return {"status": "ok", "user": user_out(user)}
 
@@ -304,6 +329,7 @@ def demote_from_admin(user_id: str, db: Session = Depends(get_db), admin: models
     
     user.role = "student"
     user.status = "pending"
+    user.admin_role = ""
     db.commit()
     return {"status": "ok", "user": user_out(user)}
 

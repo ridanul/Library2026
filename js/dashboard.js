@@ -9,6 +9,8 @@ const state = {
   admin: {
     settings: { fine_per_day: 0.5, grace_days: 14, late_return_default_fine: 5 },
     users: [],
+    students: { page: 1, pageSize: 10, total: 0 },
+    teachers: { page: 1, pageSize: 10, total: 0 },
   },
 };
 
@@ -16,7 +18,10 @@ const headerUserName = document.getElementById("headerUserName");
 const headerUserRole = document.getElementById("headerUserRole");
 const logoutBtn = document.getElementById("logoutBtn");
 headerUserName.textContent = state.user?.name || "Reader";
-headerUserRole.textContent = state.user?.role || "student";
+// For admins, surface their library role (e.g. "librarian") next to the title.
+headerUserRole.textContent = state.user?.role === "admin"
+  ? (state.user?.admin_role || "librarian")
+  : (state.user?.role || "student");
 logoutBtn.addEventListener("click", () => Auth.logout());
 
 if (Auth.isAdmin()) {
@@ -884,15 +889,28 @@ function renderMemberTables() {
   const users = state.admin.users || [];
   const students = users.filter((u) => u.role === "student");
   const teachers = users.filter((u) => u.role === "teacher");
-  for (const [tbodyId, rows, emptyMsg] of [
-    ["studentsTableBody", students, "No students registered yet."],
-    ["teachersTableBody", teachers, "No teachers registered yet."],
-  ]) {
-    const tbody = document.getElementById(tbodyId);
+
+  // Paginate each member group and render its page of rows.
+  const groups = [
+    { tbodyId: "studentsTableBody", pagId: "studentsPagination", key: "students", rows: students, emptyMsg: "No students registered yet." },
+    { tbodyId: "teachersTableBody", pagId: "teachersPagination", key: "teachers", rows: teachers, emptyMsg: "No teachers registered yet." },
+  ];
+
+  for (const g of groups) {
+    const tbody = document.getElementById(g.tbodyId);
     if (!tbody) continue;
-    tbody.innerHTML = rows.length
-      ? rows.map(memberRow).join("")
-      : `<tr><td colspan="6" class="px-4 py-3 text-sm text-charcoal/50">${emptyMsg}</td></tr>`;
+
+    const pstate = state.admin[g.key];
+    pstate.total = g.rows.length;
+    const pageCount = Math.max(1, Math.ceil(pstate.total / pstate.pageSize));
+    if (pstate.page > pageCount) pstate.page = pageCount;
+    const start = (pstate.page - 1) * pstate.pageSize;
+    const pageRows = g.rows.slice(start, start + pstate.pageSize);
+
+    tbody.innerHTML = pageRows.length
+      ? pageRows.map(memberRow).join("")
+      : `<tr><td colspan="6" class="px-4 py-3 text-sm text-charcoal/50">${g.emptyMsg}</td></tr>`;
+
     tbody.querySelectorAll("[data-approve-user]").forEach((btn) =>
       btn.addEventListener("click", async () => {
         try {
@@ -904,6 +922,16 @@ function renderMemberTables() {
         }
       })
     );
+
+    renderPager(document.getElementById(g.pagId), {
+      page: pstate.page,
+      pageSize: pstate.pageSize,
+      total: g.rows.length,
+      onPageChange: (nextPage) => {
+        pstate.page = nextPage;
+        renderMemberTables();
+      },
+    });
   }
 }
 
@@ -1013,10 +1041,14 @@ if (Auth.isAdmin()) {
 // Profile modal — self-service edit of name / department / session /
 // student ID plus an optional password change.
 // ===========================================================================
+// Administrative library roles an admin account may hold (e.g. librarian).
+const ADMIN_ROLES = ["Librarian", "Cataloger", "Circulation", "Acquisitions", "Reference"];
+
 const profileModal = document.getElementById("profileModal");
 
 function fillProfileModal() {
   const u = state.user || {};
+  const isAdmin = u.role === "admin";
   document.getElementById("profName").value = u.name || "";
   document.getElementById("profEmail").textContent = u.email || "—";
   const depSel = document.getElementById("profDepartment");
@@ -1028,8 +1060,25 @@ function fillProfileModal() {
   }
   depSel.value = u.department || "";
   if (![...depSel.options].some((o) => o.value === depSel.value)) depSel.value = "";
+  // Admins hold no academic session or student ID — hide those fields for them.
+  document.getElementById("profSessionWrap").classList.toggle("hidden", isAdmin);
+  document.getElementById("profStudentIdWrap").classList.toggle("hidden", isAdmin);
   document.getElementById("profSession").value = u.session || "";
   document.getElementById("profStudentId").value = u.student_id || "";
+
+  // Admins may set their library role (e.g. "librarian").
+  const adminRoleSel = document.getElementById("profAdminRole");
+  if (adminRoleSel) {
+    if (!adminRoleSel.dataset.populated) {
+      adminRoleSel.innerHTML =
+        '<option value="">Not set</option>' +
+        ADMIN_ROLES.map((r) => `<option value="${r}">${r}</option>`).join("");
+      adminRoleSel.dataset.populated = "1";
+    }
+    adminRoleSel.value = u.admin_role || "";
+    document.getElementById("profAdminRoleWrap").classList.toggle("hidden", !isAdmin);
+  }
+
   const cardInfo = document.getElementById("profCardInfo");
   if (u.card_number) {
     cardInfo.textContent = `Library card ${u.card_number} · valid until ${u.card_valid_until || "—"}`;
@@ -1071,13 +1120,19 @@ document.getElementById("profileForm")?.addEventListener("submit", async (e) => 
     session: document.getElementById("profSession").value.trim(),
     student_id: document.getElementById("profStudentId").value.trim(),
   };
+  // Only admins carry a library role — include it so they can edit it.
+  if (state.user?.role === "admin") {
+    payload.admin_role = document.getElementById("profAdminRole").value;
+  }
   if (pw) payload.password = pw;
   try {
     const updated = await Api.updateProfile(payload);
     state.user = updated;
     Auth.setSession(localStorage.getItem("lib_token"), updated); // refresh cached user, keep token
     headerUserName.textContent = updated.name || "Reader";
-    headerUserRole.textContent = updated.role || "student";
+    headerUserRole.textContent = updated.role === "admin"
+      ? (updated.admin_role || "librarian")
+      : (updated.role || "student");
     profileModal.classList.add("hidden");
     toast("Profile updated.");
   } catch (err) {

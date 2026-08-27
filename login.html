@@ -119,7 +119,7 @@
                   <option value="" disabled selected>Select department</option>
                 </select>
               </div>
-              <div>
+              <div id="regSessionWrap">
                 <label class="block text-xs font-mono uppercase tracking-wide text-charcoal/60 mb-1">Session</label>
                 <input type="text" id="regSession" required list="sessionList" placeholder="e.g. 2023-24"
                   class="w-full border border-ink/15 rounded px-3 py-2 bg-white focus:outline-none focus:ring-2 focus:ring-brass" />
@@ -235,8 +235,22 @@
     // keep only digits, capped at 12 — no hyphens, spaces or letters
     studentIdInput.value = studentIdInput.value.replace(/\D/g, '').slice(0, 12);
   });
-  document.getElementById('regRoleType').addEventListener('change', syncStudentField);
+
+  // Teachers have no academic session — hide the Session field for them.
+  const sessionInput = document.getElementById('regSession');
+  function syncSessionField() {
+    const isStudent = document.getElementById('regRoleType').value === 'student';
+    document.getElementById('regSessionWrap').classList.toggle('hidden', !isStudent);
+    sessionInput.required = isStudent;
+    if (!isStudent) sessionInput.value = '';
+  }
+
+  document.getElementById('regRoleType').addEventListener('change', () => {
+    syncStudentField();
+    syncSessionField();
+  });
   syncStudentField();
+  syncSessionField();
 
   const tabLogin = document.getElementById('tabLogin');
   const tabRegister = document.getElementById('tabRegister');
@@ -424,6 +438,8 @@
         registerForm.reset();
         document.getElementById('regRole').value = 'student';
         document.getElementById('regRoleType').value = 'student';
+        syncStudentField();
+        syncSessionField();
         document.getElementById('loginEmail').value = signupEmail;
         activateTab('login');
         return;

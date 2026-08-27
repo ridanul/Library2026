@@ -1,0 +1,444 @@
+===============================================================================
+ KiU LIBRARY MANAGEMENT SYSTEM — PROJECT EXPLANATION
+===============================================================================
+This file explains (1) every JavaScript function used in the frontend, (2)
+where the database is created and how it's configured, and (3) how the
+database tables relate to one another. It also lists the fixes/completions
+made to the project during this review.
+
+-------------------------------------------------------------------------------
+1. WHERE THE DATABASE IS CREATED
+-------------------------------------------------------------------------------
+File: Backend/app/database.py
+
+  * `DATABASE_URL` is read from the environment variable `DATABASE_URL`.
+    If it is not set, the app defaults to a local SQLite file:
+        sqlite:///./library.db
+    That means, by default, the database is a single file named
+    `library.db` sitting inside the `Backend/` folder (created the first
+    time the app starts, next to `Backend/app/`).
+
+  * If `DATABASE_URL` IS set (e.g. on Heroku, which injects a Postgres URL),
+    the code rewrites the legacy `postgres://` / `postgresql://` scheme to
+    `postgresql+psycopg://` so SQLAlchemy's psycopg3 driver is used, and
+    appends `sslmode=require` when running on Heroku (`DYNO` env var present).
+
+  * `engine = create_engine(DATABASE_URL, connect_args=...)` creates the
+    SQLAlchemy engine. `SessionLocal` is a session factory bound to that
+    engine, and `Base = declarative_base()` is the declarative base class
+    every model (Backend/app/models.py) inherits from.
+
+  * The actual TABLES are created in Backend/app/main.py, inside the
+    `on_startup()` function (decorated with `@app.on_event("startup")`):
+        models.Base.metadata.create_all(bind=engine)
+    This runs once when the FastAPI app boots. It creates any table that
+    doesn't exist yet (based on the model classes in models.py) but does
+    NOT alter existing tables.
+
+  * Because SQLite doesn't support easy "add column" migrations out of the
+    box, `database.py` also defines `ensure_schema()`, which is called
+    right after `create_all()`. It manually runs `ALTER TABLE ... ADD
+    COLUMN ...` for any column that was added to a model after the table
+    already existed in someone's local `library.db` (e.g. `admin_role`,
+    `department`, `session`, `student_id`, `card_number`,
+    `card_expires_on`, `broadcast_id`). This keeps older local database
+    files compatible with newer code without needing a full migration
+    tool like Alembic.
+
+  * Demo/sample data is inserted by Backend/app/seed.py's `run(db)`
+    function, also called from `on_startup()`. It only inserts rows if
+    the `users` table is completely empty, so it never overwrites a real
+    database — it's purely a first-run convenience (creates a demo
+    student, teacher, and admin account, some sample books, and a couple
+    of notifications).
+
+  In short: run the backend once (`uvicorn app.main:app`), and
+  `Backend/library.db` is created and populated automatically.
+
+-------------------------------------------------------------------------------
+2. HOW THE TABLES ARE RELATED
+-------------------------------------------------------------------------------
+All tables are defined in Backend/app/models.py as SQLAlchemy ORM classes.
+
+  users (User)
+  -------------
+  Primary key: id (e.g. "u_xxxxxxxxxxxx")
+  Holds every account regardless of role ("student" | "teacher" | "admin").
+  Columns of note:
+    - role            -> which of the 3 roles the account has
+    - status          -> "pending" | "approved" (admin-approval gate)
+    - department, session, student_id -> academic info; session/student_id
+      are only meaningful for students (teachers and admins keep them blank)
+    - admin_role      -> library job title, e.g. "librarian", "cataloger"
+                         (only meaningful for role == "admin")
+    - card_number, card_expires_on -> auto-issued library card info
+
+  books (Book)
+  -------------
+  Primary key: id (e.g. "b_xxxxxxxxxxxx")
+  One row per title/edition available in the library. `copies` is how
+  many physical copies exist; `available` is how many are currently NOT
+  checked out.
+
+  borrows (Borrow)  — JOIN table between users and books
+  -------------------------------------------------------
+  Primary key: id (e.g. "br_xxxxxxxxxxxx")
+  Foreign keys:
+    - user_id -> users.id   (who borrowed it)
+    - book_id -> books.id   (what they borrowed)
+  Columns: borrowed_at, returned_at (NULL while still checked out).
+  Relationship: User.borrows <-> Borrow.user (one user, many borrows)
+                Book.borrows <-> Borrow.book (one book, many borrow records
+                over its lifetime)
+  This is a classic many-to-many relationship between users and books,
+  implemented via this association table, with extra columns (dates) that
+  a plain many-to-many table couldn't hold.
+
+  notifications (Notification)
+  -----------------------------
+  Primary key: id
+  Foreign key: user_id -> users.id
+  Personal notifications shown in a user's dashboard bell icon.
+  `broadcast_id` groups many copies of the same admin broadcast (e.g. one
+  announcement fanned out to every student gets one row per student, all
+  sharing the same broadcast_id, so it can be edited/deleted as a group).
+
+  email_verifications (EmailVerification)
+  -----------------------------------------
+  Primary key: id
+  Foreign key: user_id -> users.id
+  One-time OTP codes generated at registration (and resend) time, checked
+  against `/api/auth/verify`, then deleted once used or superseded.
+
+  reviews (Review)
+  -----------------
+  Primary key: id
+  Foreign keys:
+    - book_id -> books.id  (which book is being reviewed)
+    - user_id -> users.id  (who wrote it)
+  `status` is "pending" | "approved" | "rejected" — an admin moderates
+  member-submitted reviews before they appear publicly on the book detail
+  page. Admins can also add a review directly (auto-approved).
+
+  fines (Fine)
+  --------------
+  Primary key: id
+  Foreign key: user_id -> users.id
+  Independent of any specific borrow row — a flat log of charges (manual
+  or auto-generated for overdue books) with a `paid` flag.
+
+  app_settings (AppSetting)
+  ---------------------------
+  Primary key: key (a plain string, e.g. "fine_per_day")
+  Simple key/value store for admin-tunable settings: fine_per_day,
+  grace_days, late_return_default_fine. No foreign keys — this is a
+  standalone configuration table, read via `get_setting()` / written via
+  `set_setting()` in main.py.
+
+  Relationship summary (ER-style):
+    users (1) ----< (many) borrows >---- (1) books
+    users (1) ----< (many) notifications
+    users (1) ----< (many) email_verifications
+    users (1) ----< (many) reviews >---- (1) books
+    users (1) ----< (many) fines
+    app_settings : standalone, no relation to other tables
+
+-------------------------------------------------------------------------------
+3. JAVASCRIPT FUNCTIONS — WHAT EACH ONE DOES
+-------------------------------------------------------------------------------
+
+--- js/config.js ---------------------------------------------------------
+No functions — just a plain object `window.LIB_CONFIG` holding the API
+base URL and a map of endpoint paths/builders used by api.js.
+
+--- js/auth.js  (the `Auth` object) --------------------------------------
+  Auth.getUser()
+      Reads and JSON-parses the cached user object from
+      localStorage["lib_user"]. Returns null if missing/corrupt.
+  Auth.setSession(token, user)
+      Persists the JWT and the user object to localStorage so the session
+      survives page reloads.
+  Auth.clearSession()
+      Removes both localStorage keys (used on logout).
+  Auth.isLoggedIn()
+      True if a non-null token string exists in localStorage.
+  Auth.isAdmin()
+      True if the cached user's role is "admin".
+  Auth.requireAuth()
+      Redirects to login.html if the user isn't logged in. Called at the
+      top of dashboard.js so the dashboard is never shown to a signed-out
+      visitor.
+  Auth.redirectIfLoggedIn()
+      Redirects to dashboard.html if the user IS already logged in.
+      Called at the top of login.html so a logged-in user doesn't see the
+      login form again.
+  Auth.logout()
+      Clears the session and redirects to login.html.
+  Auth.passwordProblem(pw)
+      Client-side mirror of the backend's password policy (in
+      Backend/app/schemas.py). Returns an empty string if the password is
+      valid, or a human-readable error message describing the first rule
+      that failed (length, uppercase, lowercase, special character).
+
+--- js/api.js  (the `Api` object) ----------------------------------------
+  authHeaders()
+      Builds an `Authorization: Bearer <token>` header object from the
+      token in localStorage (or {} if not logged in).
+  request(path, options)
+      The core fetch wrapper used by every Api.* call. Adds JSON headers
+      and the auth header, sends the request, parses the JSON response,
+      and throws a typed `ApiError` on any non-2xx response or network
+      failure. If DEMO_MODE_FALLBACK is enabled and the backend is
+      unreachable, it silently reroutes the call to a `Mock` object instead
+      (kept for offline/demo browsing; disabled by default here since
+      DEMO_MODE_FALLBACK = false in config.js).
+  class ApiError
+      A small Error subclass carrying an HTTP `status` code alongside the
+      message, so callers can branch on status if needed.
+  coverUrl(url)
+      Turns a relative book-cover path returned by the backend (e.g.
+      "/covers/abc.jpg") into an absolute URL against the API origin, so
+      it displays correctly regardless of how the frontend is hosted.
+  uploadCover(file)
+      Uploads a book cover image as multipart/form-data (bypasses the
+      generic `request()` helper because file uploads need a
+      browser-generated Content-Type boundary, not "application/json").
+  Api.register / login / verifyEmail / resendVerification / me
+      Thin wrappers around `request()` for the corresponding auth
+      endpoints.
+  Api.listBooks(params)
+      Builds a query string from filter/pagination params (search, genre,
+      department, session, category, page, page_size) and GETs /books.
+  Api.addBook / updateBook / deleteBook
+      Admin-only book CRUD.
+  Api.borrowBook(id) / returnBook(id)
+      POST to /books/{id}/borrow or /books/{id}/return.
+  Api.getRecommendations()
+      GET /recommendations — books matching the signed-in user's saved
+      genre interests.
+  Api.getInterests() / setInterests(genres)
+      GET/POST a user's saved genre interests (used to drive
+      recommendations and "new arrival" notifications).
+  Api.listPendingUsers() / listUsers() / approveUser(id)
+      Admin endpoints for the approval queue and the full user list.
+  Api.getOverdueLoans()
+      Admin: list of currently overdue borrows with computed fine amounts.
+  Api.chargeFine(userId, data) / createFine(userId, data) / payFine(fineId)
+      Fine management: admin charges a fine, or a user pays one.
+  Api.getFines() / getAllFines()
+      A user's own fines, or (admin) every fine in the system.
+  Api.getBook(id)
+      GET a single book's full detail.
+  Api.getAdminSettings() / putAdminSettings(data)
+      Read/write the app_settings table (fine_per_day, grace_days, etc.).
+  Api.getNotifications() / markNotificationRead(id)
+      A user's notification feed and marking one as read.
+  Api.createAdminNotification(data)
+      Admin: broadcast a notification to all students / all users / one
+      specific user.
+  Api.updateProfile(data)
+      PUT /users/me — self-service profile edit (name, department,
+      session, student_id, admin_role, optional password change).
+  Api.getBookReviews(id) / addBookReview(id, data)
+      Fetch approved reviews for a book, or submit a new one (goes to
+      "pending" until an admin moderates it).
+  Api.pendingReviews() / approveReview(id) / rejectReview(id) /
+  Api.addReviewManually(data)
+      Admin review-moderation queue and manual review creation.
+  Api.adminReturnLoan(borrowId)
+      Admin manually marks a borrow record as returned.
+  Api.adminNotifications() / updateAdminNotification(id, data) /
+  Api.deleteAdminNotification(id)
+      Admin CRUD over previously sent broadcast notifications (grouped by
+      broadcast_id).
+
+--- js/dashboard.js -------------------------------------------------------
+This is the main dashboard controller, split by feature area:
+
+  General / navigation
+    setView(view)
+      Switches which `.view-panel` section is visible (Browse, For You,
+      Notifications, Manage, etc.) and lazily loads that view's data.
+    toast(msg)
+      Shows a temporary bottom/top toast message, auto-hides after ~2.4s.
+    renderPager(container, {page, pageSize, total, onPageChange})
+      Shared pagination-widget renderer: draws Prev/Page X of Y/Next
+      controls into any container element and wires the click handlers.
+      Used by every paginated list (Browse books, Manage books, Students,
+      Teachers).
+    escapeHtml(str)
+      Escapes a string for safe interpolation into innerHTML (prevents
+      basic HTML/script injection from user-entered book titles, names,
+      review comments, etc.).
+
+  Book browsing (student/teacher-facing "Browse" tab)
+    loadBooks()
+      Calls Api.listBooks() with the current search/filter/page state,
+      then renders the grid, the filter dropdowns, and the pager.
+    renderBookGrid(items)
+      Renders the array of books as cards and wires up each card's
+      "Borrow" button and "view details" click handler.
+    bookCard(book, opts)
+      Builds the HTML for a single book card (cover, title, author,
+      availability stamp, optional Borrow button).
+    fillFilterSelect(sel, options, allLabel)
+      Fills a <select> with an "All ..." option plus one option per value,
+      preserving the currently selected value if still present.
+    populateFilters(facets)
+      Populates the Genre/Department/Session/Category filter dropdowns
+      from the server-provided facet lists (or a client-side fallback
+      computed from the currently loaded page of books).
+    borrowBook(id)
+      Calls Api.borrowBook, toasts success/failure, and refreshes the
+      book list (and the admin Manage table if that's the active view).
+    openBookDetail(id)
+      Opens the book-detail modal, fetches the book + its reviews, fills
+      in cover/title/author/ISBN/description/availability, and wires the
+      modal's own Borrow button and review form.
+    starsFor(rating)
+      Turns a 1-5 integer rating into a "★★★★☆"-style string.
+    renderReviews(resp)
+      Renders the list of approved reviews (and, for the current user,
+      whether they're still allowed to leave one) inside the book-detail
+      modal.
+
+  Recommendations ("For You" tab)
+    loadRecommendations()
+      Fetches Api.getRecommendations() and renders them as book cards, or
+      an empty-state message with a link to set interests.
+    openInterestsModal()
+      Opens the "pick your genres" modal, pre-checking the user's
+      currently saved interests, and saves the new selection via
+      Api.setInterests() on submit.
+
+  Notifications
+    loadNotifications()
+      Fetches the user's notification feed and renders it, marking items
+      read on click.
+    refreshNotifDotFrom(items) / refreshNotifDot()
+      Show/hide the small red "unread" dot on the notifications nav
+      button, either from an already-fetched list or by fetching fresh.
+
+  Admin: broadcast notifications
+    populateAdminNotifUser()
+      Fills the "send to a specific user" dropdown in the admin
+      notification composer.
+    adminNotifTargetVisible()
+      Toggles the specific-user dropdown's visibility based on the chosen
+      broadcast target (all students / all users / one user).
+    resetAdminNotifForm()
+      Clears the notification composer back to its default state.
+    initAdminNotifications()
+      One-time wiring of the composer's submit handler and target-type
+      change handler.
+    loadAdminNotifications()
+      Loads and renders the list of previously sent broadcasts (grouped
+      by broadcast_id) with Edit/Delete actions.
+    startEditNotification(n)
+      Pre-fills the composer with an existing broadcast's title/body so
+      an admin can edit and re-save it in place.
+
+  Admin: book management ("Manage" tab)
+    openBookModal(book)
+      Opens the add/edit-book modal. If `book` is passed, pre-fills the
+      form for editing; otherwise it's a blank "add new book" form. Wires
+      cover upload and the save/delete handlers.
+    loadManageTable()
+      Fetches the paginated book list for the admin Manage view and
+      renders rows with Edit/Delete/cover-thumbnail actions plus the
+      pager.
+    loadAdminPanels()
+      Master loader for everything on the admin side: pending
+      approvals, full user list (feeds renderMemberTables()), overdue
+      loans, fines, settings, and review moderation — called once on
+      dashboard load for admins and again after actions that change that
+      data (e.g. approving a user).
+    initAdminNotificationForm()
+      (Legacy/alternate wiring path for the notification composer;
+      ties the same events as initAdminNotifications() for pages/paths
+      that call this entry point instead.)
+
+  Admin: Students / Teachers tables
+    memberRow(u)
+      Builds one <tr> for a student or teacher: name, email, card number,
+      department · session, approval-status badge, and an Approve button
+      when the account is still pending.
+    renderMemberTables()
+      Splits state.admin.users into students vs. teachers, paginates each
+      group independently using its own page/pageSize/total in
+      state.admin.students / state.admin.teachers, renders each table's
+      current page of rows, wires the Approve buttons, and renders each
+      table's own pager via renderPager().
+
+  Admin: review moderation
+    loadPendingReviews()
+      Fetches reviews awaiting moderation and renders them with
+      Approve/Reject buttons.
+    moderateReview(id, action)
+      Calls Api.approveReview or Api.rejectReview and refreshes the
+      pending-review list.
+    initManualReview()
+      Wires the "admin manually adds a review" mini-form (book picker +
+      rating + comment) to Api.addReviewManually().
+
+  Self-service profile modal
+    fillProfileModal()
+      Pre-fills the profile-edit modal from the cached user object:
+      name, department, and — depending on role — either the
+      session/student ID fields (students) or the library-role dropdown
+      (admins), hiding whichever set doesn't apply to the signed-in
+      user's role. Also shows the user's library card info if they have
+      one.
+    (submit handler on #profileForm)
+      Validates the name/password client-side, builds the update payload
+      (including admin_role only when the user is an admin), calls
+      Api.updateProfile(), and refreshes the cached session + header
+      display on success.
+
+-------------------------------------------------------------------------------
+4. INCONSISTENCIES FOUND AND FIXED IN THIS REVIEW
+-------------------------------------------------------------------------------
+The frontend requirements (no Session field for teachers on registration,
+pagination on Books/Students/Teachers, and an admin profile with no
+session/student ID but an editable library role) were already implemented
+in this codebase. While verifying the app end-to-end against a live
+backend instance, three real bugs were found and fixed in
+Backend/app/main.py and Backend/app/seed.py:
+
+  1. `/api/auth/verify` only returned `pendingApproval: true` for
+     role == "student". Teachers also require admin approval before they
+     can log in (per the /api/auth/login check), so a teacher verifying
+     their email got `pendingApproval: false`, the frontend then tried to
+     auto-login them, and they hit a confusing raw "pending admin
+     approval" error instead of the friendly post-verification message.
+     Fixed to check `user.role != "admin"` instead of `== "student"`.
+
+  2. `/api/auth/register`'s "resume OTP for an existing unverified
+     account" path only applied to role == "student". An unverified
+     teacher re-submitting the registration form (e.g. after their OTP
+     expired) got a hard 409 "account already exists" error instead of a
+     fresh OTP. Fixed to include role == "teacher" as well.
+
+  3. Backend/app/seed.py's demo teacher account had a hardcoded
+     `session="2024-25"` and a student-ID-like `student_id="T-3391"`,
+     contradicting the rule (enforced everywhere else: the registration
+     form, the profile editor, and RegisterIn's `clear_teacher_fields`
+     validator) that teachers carry no academic session or student ID.
+     Fixed to leave both blank.
+
+  4. `/api/admin/users/{id}/promote` (student/teacher -> admin) did not
+     clear the promoted user's `session`, `student_id`, or student-style
+     `card_number`/`card_expires_on`. Since "admin profile have no
+     session, or student id" is an explicit requirement, promoting a
+     student left a broken/inconsistent admin profile carrying leftover
+     academic fields. Fixed to clear all four fields at promotion time
+     (mirroring what update_profile already does when an admin edits
+     their own profile).
+
+All four fixes were verified against a running instance of the backend
+(registered a teacher, captured the dev-mode console OTP, verified it,
+confirmed the correct pendingApproval value; re-registered the same
+unverified email and confirmed it resumed instead of erroring; reseeded
+the database and confirmed the demo teacher has no session/student ID;
+promoted a seeded student to admin and confirmed session/student_id/card
+fields were cleared in the API response).

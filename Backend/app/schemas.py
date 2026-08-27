@@ -74,6 +74,15 @@ class RegisterIn(BaseModel):
             raise ValueError("Student ID must be exactly 12 digits (no hyphens or spaces).")
         return self
 
+    @model_validator(mode="after")
+    def clear_teacher_fields(self):
+        """Teachers don't have a session or student ID — blank them so they
+        can never be persisted for non-student roles."""
+        if self.role == "teacher":
+            self.session = ""
+            self.student_id = ""
+        return self
+
     @field_validator("password")
     @classmethod
     def check_password_strength(cls, value: str) -> str:
@@ -87,8 +96,9 @@ class ProfileUpdateIn(BaseModel):
     department: Optional[str] = None
     session: Optional[str] = None
     student_id: Optional[str] = None
+    admin_role: Optional[str] = None  # library role (admins only), e.g. "librarian"
 
-    @field_validator("name", "department", "session", "student_id")
+    @field_validator("name", "department", "session", "student_id", "admin_role")
     @classmethod
     def strip_optional(cls, value: Optional[str]) -> Optional[str]:
         return _clean(value) if value is not None else None
@@ -99,6 +109,9 @@ class ProfileUpdateIn(BaseModel):
         if value:
             validate_password_strength(value)
         return value
+
+    # NOTE: session/student_id are cleared for admins in the update_profile
+    # endpoint (main.py), which has access to the current user's role.
 
 
 class VerifyIn(BaseModel):
@@ -127,6 +140,7 @@ class UserOut(BaseModel):
     card_number: str = ""
     card_valid_until: Optional[date] = None
     genres: List[str] = []
+    admin_role: str = ""  # library role for admins, e.g. "librarian", "cataloger"
 
     class Config:
         from_attributes = True
