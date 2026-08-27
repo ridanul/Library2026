@@ -48,6 +48,7 @@
             <p class="text-sm font-medium leading-tight text-ink" id="headerUserName">—</p>
             <p class="font-mono uppercase tracking-wide text-brass" id="headerUserRole">—</p>
           </div>
+          <button id="profileBtn" class="text-xs font-mono border border-ink/20 rounded px-3 py-2 hover:bg-parchmentDark transition">Profile</button>
           <button id="logoutBtn" class="text-xs font-mono border border-ink/20 rounded px-3 py-2 hover:bg-parchmentDark transition">Sign out</button>
         </div>
       </div>
@@ -72,11 +73,24 @@
         </div>
       </div>
 
-      <div class="flex flex-col sm:flex-row gap-3 mb-6">
+      <div class="flex flex-col lg:flex-row gap-3 mb-6">
         <input id="searchInput" type="text" placeholder="Search by title, author, or ISBN…" class="flex-1 border border-ink/15 rounded px-4 py-2.5 bg-white focus:outline-none focus:ring-2 focus:ring-brass" />
-        <select id="genreFilter" class="border border-ink/15 rounded px-3 py-2.5 bg-white focus:outline-none focus:ring-2 focus:ring-brass">
-          <option value="">All genres</option>
-        </select>
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <select id="genreFilter" class="border border-ink/15 rounded px-3 py-2.5 bg-white focus:outline-none focus:ring-2 focus:ring-brass">
+            <option value="">All genres</option>
+          </select>
+          <select id="departmentFilter" class="border border-ink/15 rounded px-3 py-2.5 bg-white focus:outline-none focus:ring-2 focus:ring-brass">
+            <option value="">All departments</option>
+          </select>
+          <select id="sessionFilter" class="border border-ink/15 rounded px-3 py-2.5 bg-white focus:outline-none focus:ring-2 focus:ring-brass">
+            <option value="">All sessions</option>
+          </select>
+          <select id="categoryFilter" class="border border-ink/15 rounded px-3 py-2.5 bg-white focus:outline-none focus:ring-2 focus:ring-brass">
+            <option value="">Academic &amp; non-academic</option>
+            <option value="academic">Academic</option>
+            <option value="non-academic">Non-academic</option>
+          </select>
+        </div>
       </div>
 
       <div id="bookGrid" class="grid sm:grid-cols-2 lg:grid-cols-3 gap-6"></div>
@@ -100,8 +114,48 @@
     <section id="view-notifications" class="view-panel hidden bg-white rounded-lg p-5 sm:p-8 border border-ink/10 shadow-md">
       <p class="font-mono text-xs tracking-[0.2em] text-brass uppercase mb-1">Circulation Desk</p>
       <h1 class="font-display text-3xl text-ink mb-6">Notifications</h1>
-      <div id="notifList" class="space-y-3 max-w-2xl"></div>
-      <p id="notifEmpty" class="hidden text-center text-charcoal/50 font-mono text-sm py-12">You're all caught up.</p>
+
+      <div id="memberNotifWrap">
+        <div id="notifList" class="space-y-3 max-w-2xl"></div>
+        <p id="notifEmpty" class="hidden text-center text-charcoal/50 font-mono text-sm py-12">You're all caught up.</p>
+      </div>
+
+      <div id="adminNotifSection" class="hidden">
+        <div class="border border-ink/10 rounded-lg bg-white/70 p-4 mb-5 max-w-2xl">
+          <h2 id="adminNotifFormTitle" class="font-display text-lg text-ink mb-3">Send notification</h2>
+          <input type="hidden" id="adminNotifGroupId" />
+          <div class="space-y-3">
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div>
+                <label class="block text-xs font-mono uppercase tracking-wide text-charcoal/60 mb-1">Target</label>
+                <select id="adminNotifTarget" class="w-full border border-ink/15 rounded px-3 py-2 bg-white focus:outline-none focus:ring-2 focus:ring-brass">
+                  <option value="all_students">All students</option>
+                  <option value="all_users">All users</option>
+                  <option value="user">Specific user</option>
+                </select>
+              </div>
+              <div id="adminNotifUserWrap" class="hidden">
+                <label class="block text-xs font-mono uppercase tracking-wide text-charcoal/60 mb-1">User</label>
+                <select id="adminNotifUser" class="w-full border border-ink/15 rounded px-3 py-2 bg-white focus:outline-none focus:ring-2 focus:ring-brass"></select>
+              </div>
+            </div>
+            <div>
+              <label class="block text-xs font-mono uppercase tracking-wide text-charcoal/60 mb-1">Title</label>
+              <input id="adminNotifTitle" maxlength="120" class="w-full border border-ink/15 rounded px-3 py-2 bg-white focus:outline-none focus:ring-2 focus:ring-brass" />
+            </div>
+            <div>
+              <label class="block text-xs font-mono uppercase tracking-wide text-charcoal/60 mb-1">Message</label>
+              <textarea id="adminNotifBody" rows="3" class="w-full border border-ink/15 rounded px-3 py-2 bg-white focus:outline-none focus:ring-2 focus:ring-brass"></textarea>
+            </div>
+            <div class="flex flex-wrap gap-2 items-center">
+              <button id="adminNotifSendBtn" class="bg-brass text-white font-medium px-4 py-2 rounded hover:bg-brass/90 transition">Send notification</button>
+              <button id="adminNotifCancelEditBtn" type="button" class="hidden px-4 py-2 rounded border border-ink/20 hover:bg-parchmentDark transition">Cancel edit</button>
+              <p id="adminNotifStatus" class="text-sm text-charcoal/60"></p>
+            </div>
+          </div>
+        </div>
+        <div id="adminNotifList" class="space-y-2 max-w-2xl"></div>
+      </div>
     </section>
 
     <section id="view-manage" class="view-panel hidden bg-white rounded-lg p-5 sm:p-8 border border-ink/10 shadow-md">
@@ -149,6 +203,74 @@
           </div>
           <div id="overdueList" class="space-y-2"></div>
         </div>
+      </div>
+
+      <div class="border border-ink/10 rounded-lg bg-white/70 p-5 mt-6">
+        <h2 class="font-display text-xl text-ink mb-4">Pending reviews</h2>
+        <div id="pendingReviewsList" class="space-y-2"></div>
+      </div>
+
+      <div class="border border-ink/10 rounded-lg bg-white/70 p-5 mt-6">
+        <h2 class="font-display text-xl text-ink mb-4">Add a review manually</h2>
+        <div class="space-y-3">
+          <div>
+            <label class="block text-xs font-mono uppercase text-charcoal/60 mb-1">Book</label>
+            <select id="manualReviewBook" class="w-full border border-ink/15 rounded px-3 py-2 bg-white"></select>
+          </div>
+          <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 items-end">
+            <div>
+              <label class="block text-xs font-mono uppercase text-charcoal/60 mb-1">Rating</label>
+              <select id="manualReviewRating" class="w-full border border-ink/15 rounded px-3 py-2 bg-white">
+                <option value="5">★★★★★</option>
+                <option value="4">★★★★</option>
+                <option value="3">★★★</option>
+                <option value="2">★★</option>
+                <option value="1">★</option>
+              </select>
+            </div>
+            <button id="submitManualReviewBtn" class="bg-brass text-white font-medium px-4 py-2.5 rounded hover:bg-brass/90 transition sm:col-span-1 sm:w-auto w-full">
+              Publish review
+            </button>
+          </div>
+          <div>
+            <label class="block text-xs font-mono uppercase text-charcoal/60 mb-1">Comment</label>
+            <textarea id="manualReviewComment" rows="2" class="w-full border border-ink/15 rounded px-3 py-2 bg-white"></textarea>
+          </div>
+        </div>
+      </div>
+
+      <div class="border border-ink/10 rounded-lg bg-white/70 p-5 mt-6 overflow-x-auto">
+        <h2 class="font-display text-xl text-ink mb-4">Students</h2>
+        <table class="w-full text-sm border-collapse min-w-[560px]">
+          <thead class="bg-parchmentDark font-mono text-xs uppercase tracking-wide text-charcoal/70">
+            <tr>
+              <th class="text-left px-4 py-3">Name</th>
+              <th class="text-left px-4 py-3">Email</th>
+              <th class="text-left px-4 py-3">Card #</th>
+              <th class="text-left px-4 py-3">Dept · Session</th>
+              <th class="text-left px-4 py-3">Status</th>
+              <th class="text-right px-4 py-3">Actions</th>
+            </tr>
+          </thead>
+          <tbody id="studentsTableBody"></tbody>
+        </table>
+      </div>
+
+      <div class="border border-ink/10 rounded-lg bg-white/70 p-5 mt-6 overflow-x-auto">
+        <h2 class="font-display text-xl text-ink mb-4">Teachers</h2>
+        <table class="w-full text-sm border-collapse min-w-[560px]">
+          <thead class="bg-parchmentDark font-mono text-xs uppercase tracking-wide text-charcoal/70">
+            <tr>
+              <th class="text-left px-4 py-3">Name</th>
+              <th class="text-left px-4 py-3">Email</th>
+              <th class="text-left px-4 py-3">Card #</th>
+              <th class="text-left px-4 py-3">Dept · Session</th>
+              <th class="text-left px-4 py-3">Status</th>
+              <th class="text-right px-4 py-3">Actions</th>
+            </tr>
+          </thead>
+          <tbody id="teachersTableBody"></tbody>
+        </table>
       </div>
 
       <div class="border border-ink/10 rounded-lg bg-white/70 p-5 mt-6">
@@ -269,8 +391,33 @@
           <input id="bookCopies" type="number" min="1" value="1" required class="w-full border border-ink/15 rounded px-3 py-2 bg-white focus:outline-none focus:ring-2 focus:ring-brass" />
         </div>
         <div>
+          <label class="block text-xs font-mono uppercase tracking-wide text-charcoal/60 mb-1">Type</label>
+          <select id="bookCategory" class="w-full border border-ink/15 rounded px-3 py-2 bg-white focus:outline-none focus:ring-2 focus:ring-brass">
+            <option value="non-academic">Non-academic</option>
+            <option value="academic">Academic</option>
+          </select>
+        </div>
+        <div>
           <label class="block text-xs font-mono uppercase tracking-wide text-charcoal/60 mb-1">Description</label>
           <textarea id="bookDescription" rows="3" class="w-full border border-ink/15 rounded px-3 py-2 bg-white focus:outline-none focus:ring-2 focus:ring-brass"></textarea>
+        </div>
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <div>
+            <label class="block text-xs font-mono uppercase tracking-wide text-charcoal/60 mb-1">Department</label>
+            <input id="bookDepartment" list="bookDeptList" class="w-full border border-ink/15 rounded px-3 py-2 bg-white focus:outline-none focus:ring-2 focus:ring-brass" />
+            <datalist id="bookDeptList"></datalist>
+          </div>
+          <div>
+            <label class="block text-xs font-mono uppercase tracking-wide text-charcoal/60 mb-1">Session</label>
+            <input id="bookSession" list="bookSessionList" class="w-full border border-ink/15 rounded px-3 py-2 bg-white focus:outline-none focus:ring-2 focus:ring-brass" />
+            <datalist id="bookSessionList"></datalist>
+          </div>
+        </div>
+        <div>
+          <label class="block text-xs font-mono uppercase tracking-wide text-charcoal/60 mb-1">Cover image (JPG, max 5MB)</label>
+          <input id="bookCoverFile" type="file" accept="image/jpeg,.jpg,.jpeg"
+            class="w-full text-sm border border-ink/15 rounded px-3 py-2 bg-white focus:outline-none focus:ring-2 focus:ring-brass" />
+          <img id="bookCoverPreview" src="" alt="" class="hidden mt-2 w-24 h-36 object-cover rounded shadow-sm" />
         </div>
         <p id="bookFormError" class="text-rust text-sm hidden"></p>
         <div class="flex gap-2 pt-2">
@@ -291,11 +438,33 @@
             <button id="closeDetailModal" class="text-charcoal/50 hover:text-charcoal">✕</button>
           </div>
           <p id="detailAuthor" class="text-sm text-charcoal/60 mb-2"></p>
+          <p id="detailMeta" class="text-xs font-mono text-brass mb-2 hidden"></p>
           <p id="detailIsbn" class="text-xs font-mono text-charcoal/50 mb-3"></p>
           <p id="detailDescription" class="text-sm text-charcoal/70 mb-4"></p>
           <div class="flex items-center gap-3">
             <span id="detailAvailable" class="stamp stamp-available"></span>
             <button id="detailBorrowBtn" class="ml-auto bg-ink text-parchment px-4 py-2.5 rounded">Borrow</button>
+          </div>
+          <div class="mt-5 pt-4 border-t border-ink/10">
+            <p class="font-mono text-xs uppercase tracking-wide text-charcoal/60 mb-2">Reviews</p>
+            <div id="detailReviews" class="space-y-2 mb-3"></div>
+            <form id="reviewForm" class="hidden space-y-2 border border-ink/10 rounded bg-white/70 p-3">
+              <input type="hidden" id="reviewBookId" />
+              <div class="flex gap-2 items-center">
+                <label class="text-xs font-mono uppercase tracking-wide text-charcoal/60">Your rating</label>
+                <select id="reviewRating" class="border border-ink/15 rounded px-2 py-1 bg-white text-sm">
+                  <option value="5">★★★★★</option>
+                  <option value="4">★★★★</option>
+                  <option value="3">★★★</option>
+                  <option value="2">★★</option>
+                  <option value="1">★</option>
+                </select>
+              </div>
+              <textarea id="reviewComment" rows="2" required placeholder="Share your thoughts about this book…"
+                class="w-full border border-ink/15 rounded px-3 py-2 bg-white text-sm"></textarea>
+              <button type="submit" class="bg-brass text-white text-sm font-medium px-3 py-1.5 rounded hover:bg-brass/90 transition">Submit review</button>
+              <p class="text-xs font-mono text-charcoal/50">Reviews appear publicly after an administrator approves them.</p>
+            </form>
           </div>
         </div>
       </div>
@@ -338,6 +507,56 @@
       <p class="text-sm text-charcoal/60 mb-4">Pick a few genres — we'll recommend books and notify you about new arrivals.</p>
       <div id="interestOptions" class="flex flex-wrap gap-2 mb-5"></div>
       <button id="saveInterestsBtn" class="w-full bg-brass text-white font-medium py-2.5 rounded hover:bg-brass/90 transition">Save interests</button>
+    </div>
+  </div>
+
+  <div id="profileModal" class="hidden fixed inset-0 bg-ink/40 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+    <div class="bg-parchment border border-ink/15 rounded-lg w-full max-w-md p-6 shadow-2xl max-h-[90vh] overflow-y-auto">
+      <div class="flex items-center justify-between mb-4">
+        <h2 class="font-display text-xl text-ink">Your profile</h2>
+        <button id="closeProfileModal" type="button" class="text-charcoal/50 hover:text-charcoal">✕</button>
+      </div>
+      <form id="profileForm" class="space-y-3">
+        <div>
+          <label class="block text-xs font-mono uppercase text-charcoal/60 mb-1">Full name</label>
+          <input id="profName" required class="w-full border border-ink/15 rounded px-3 py-2 bg-white focus:outline-none focus:ring-2 focus:ring-brass" />
+        </div>
+        <p class="text-xs font-mono text-charcoal/50">Signed in as <span id="profEmail" class="font-medium"></span> · email cannot be changed.</p>
+        <p id="profCardInfo" class="text-xs font-mono text-brass hidden"></p>
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <div>
+            <label class="block text-xs font-mono uppercase text-charcoal/60 mb-1">Department</label>
+            <select id="profDepartment" class="w-full border border-ink/15 rounded px-3 py-2 bg-white">
+              <option value="">Not set</option>
+            </select>
+          </div>
+          <div>
+            <label class="block text-xs font-mono uppercase text-charcoal/60 mb-1">Session</label>
+            <input id="profSession" list="profSessionList" class="w-full border border-ink/15 rounded px-3 py-2 bg-white" />
+            <datalist id="profSessionList"></datalist>
+          </div>
+        </div>
+        <div>
+          <label class="block text-xs font-mono uppercase text-charcoal/60 mb-1">Student ID</label>
+          <input id="profStudentId" class="w-full border border-ink/15 rounded px-3 py-2 bg-white" />
+        </div>
+        <details class="border border-ink/10 rounded bg-white/60 p-3">
+          <summary class="text-xs font-mono uppercase tracking-wide text-charcoal/60 cursor-pointer">Change password (optional)</summary>
+          <div class="mt-3">
+            <label class="block text-xs font-mono uppercase text-charcoal/60 mb-1">New password</label>
+            <input id="profPassword" type="password" minlength="6" autocomplete="new-password"
+              class="w-full border border-ink/15 rounded px-3 py-2 bg-white focus:outline-none focus:ring-2 focus:ring-brass" />
+            <p class="text-xs font-mono text-charcoal/50 mt-1 leading-relaxed">
+              Min. 6 characters with at least 1 uppercase letter, 1 lowercase letter, and 1 special character. Leave blank to keep your current password.
+            </p>
+          </div>
+        </details>
+        <p id="profileFormError" class="text-rust text-sm hidden"></p>
+        <div class="flex gap-2 pt-2">
+          <button type="submit" class="flex-1 bg-ink text-parchment font-medium py-2.5 rounded hover:bg-ink/90 transition">Save changes</button>
+          <button type="button" id="cancelProfileModal" class="px-4 py-2.5 rounded border border-ink/15 hover:bg-parchmentDark transition">Cancel</button>
+        </div>
+      </form>
     </div>
   </div>
 

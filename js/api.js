@@ -56,8 +56,42 @@ var Api = (() => {
     }
   }
 
+  // Book covers uploaded to the backend are stored at relative /covers/* URLs.
+  // Absolutize them against the API origin so file:// or cross-origin dev works.
+  function coverUrl(url) {
+    if (!url) return "";
+    if (/^https?:\/\//i.test(url)) return url;
+    return `${API_BASE.replace(/\/api\/?$/, "")}${url}`;
+  }
+
+  // Multipart upload — bypasses request() since FormData must set its own
+  // Content-Type boundary header.
+  async function uploadCover(file) {
+    const fd = new FormData();
+    fd.append("file", file);
+    const token = localStorage.getItem("lib_token");
+    let res;
+    try {
+      res = await fetch(`${API_BASE}${ENDPOINTS.uploadCover}`, {
+        method: "POST",
+        headers: token ? { Authorization: `Bearer ${token}` } : {},
+        body: fd,
+      });
+    } catch {
+      throw new ApiError("Could not reach the library server.", 0);
+    }
+    if (!res.ok) {
+      const errBody = await res.json().catch(() => ({}));
+      const rawMsg = errBody.detail ?? errBody.message ?? `Upload failed (${res.status})`;
+      throw new ApiError(typeof rawMsg === 'string' ? rawMsg : JSON.stringify(rawMsg), res.status);
+    }
+    return res.json();
+  }
+
   return {
     ApiError,
+    coverUrl,
+    uploadCover,
     register: (data) => request(ENDPOINTS.register, { method: "POST", body: data, auth: false }),
     login: (data) => request(ENDPOINTS.login, { method: "POST", body: data, auth: false }),
     verifyEmail: (data) => request("/auth/verify", { method: "POST", body: data, auth: false }),
@@ -91,6 +125,17 @@ var Api = (() => {
     getNotifications: () => request(ENDPOINTS.notifications),
     markNotificationRead: (id) => request(ENDPOINTS.notificationRead(id), { method: "POST" }),
     createAdminNotification: (data) => request("/admin/notifications", { method: "POST", body: data }),
+    updateProfile: (data) => request(ENDPOINTS.profile ?? "/users/me", { method: "PUT", body: data }),
+    getBookReviews: (id) => request(ENDPOINTS.bookReviews(id)),
+    addBookReview: (id, data) => request(ENDPOINTS.bookReviews(id), { method: "POST", body: data }),
+    pendingReviews: () => request("/admin/reviews/pending"),
+    approveReview: (id) => request(`/admin/reviews/${id}/approve`, { method: "POST", body: {} }),
+    rejectReview: (id) => request(`/admin/reviews/${id}/reject`, { method: "POST", body: {} }),
+    addReviewManually: (data) => request("/admin/reviews", { method: "POST", body: data }),
+    adminReturnLoan: (borrowId) => request(`/admin/borrows/${borrowId}/return`, { method: "POST", body: {} }),
+    adminNotifications: () => request("/admin/notifications"),
+    updateAdminNotification: (id, data) => request(`/admin/notifications/${id}`, { method: "PUT", body: data }),
+    deleteAdminNotification: (id) => request(`/admin/notifications/${id}`, { method: "DELETE", body: {} }),
   };
 })();
 window.Api = Api;

@@ -1,15 +1,17 @@
 from datetime import date
-from typing import Optional
+from typing import Optional, List
 from pathlib import Path
 
 import os
+import re
+import uuid
 
-from fastapi import FastAPI, Depends, HTTPException, status, Query
+from fastapi import FastAPI, Depends, HTTPException, status, Query, UploadFile, File
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse
 from sqlalchemy.orm import Session
-from sqlalchemy import or_
+from sqlalchemy import func, or_
 
 from . import models, schemas, seed
 from .email_utils import send_verification_email
@@ -47,6 +49,11 @@ def user_out(u: models.User) -> schemas.UserOut:
         email=u.email,
         role=u.role,
         status=getattr(u, "status", "approved"),
+        department=getattr(u, "department", "") or "",
+        session=getattr(u, "session", "") or "",
+        student_id=getattr(u, "student_id", "") or "",
+        card_number=getattr(u, "card_number", "") or "",
+        card_valid_until=getattr(u, "card_expires_on", None),
         genres=u.genre_list(),
     )
 
@@ -56,7 +63,56 @@ def book_out(b: models.Book) -> schemas.BookOut:
         id=b.id, title=b.title, author=b.author, isbn=b.isbn, genre=b.genre,
         call_number=b.call_number or "", copies=b.copies, available=b.available,
         description=b.description or "", cover_url=b.cover_url or "", added_at=b.added_at,
+        department=getattr(b, "department", "") or "",
+        session=getattr(b, "session", "") or "",
+        category=getattr(b, "category", "") or "non-academic",
     )
+
+
+def _distinct_values(db: Session, column) -> List[str]:
+    """Sorted non-empty DISTINCT values for a column across the whole table."""
+    rows = db.query(column).distinct().all()
+    return sorted({row[0].strip() for row in rows if row[0] and row[0].strip()})
+
+
+def create_and_send_otp(db: Session, user: models.User) -> str:
+    """Create a fresh EmailVerification row and best-effort email it. Returns the code."""
+    from datetime import datetime, timedelta
+    code = f"{__import__('random').randint(100000,999999)}"
+    expires = (datetime.utcnow() + timedelta(minutes=15)).isoformat()
+    ev = models.EmailVerification(user_id=user.id, code=code, expires_at=expires)
+    db.add(ev)
+    db.commit()
+    try:
+        send_verification_email(user.email, code)
+    except Exception as e:
+        print(f"[otp] Email verification failed for {user.email}: {e}")
+    return code
+
+
+def _card_expiry_from_session(session_tag: str) -> Optional[date]:
+    """Card is valid for 4 years from the session's starting year (ends Jun 30).
+
+    "2023-24" -> issued in 2023 -> valid until 2027-06-30.
+    """
+    m = re.match(r"\s*(\d{4})", session_tag or "")
+    if not m:
+        return None
+    return date(int(m.group(1)) + 4, 6, 30)
+
+
+def issue_card_number(db: Session, user: models.User) -> None:
+    """Assign the next sequential library card number for the user's role."""
+    prefix = "TCH" if user.role == "teacher" else "STU"
+    count = db.query(func.count(models.User.id)).scalar() or 0
+    seq = max(1, count) + 1
+    while db.query(models.User).filter(
+        models.User.card_number == f"{prefix}-{seq:04d}",
+        models.User.id != user.id,
+    ).first() is not None:
+        seq += 1
+    user.card_number = f"{prefix}-{seq:04d}"
+    user.card_expires_on = _card_expiry_from_session(user.session)
 
 
 def get_setting(db: Session, key: str, default: str) -> str:
@@ -79,34 +135,36 @@ def set_setting(db: Session, key: str, value: str):
 # ===========================================================================
 @app.post("/api/auth/register")
 def register(payload: schemas.RegisterIn, db: Session = Depends(get_db)):
-    if db.query(models.User).filter(models.User.email == payload.email).first():
+    existing = db.query(models.User).filter(models.User.email == payload.email).first()
+    if existing:
+        # Account exists but the email was never verified — resume the OTP flow
+        # instead of blocking re-registration.
+        if not getattr(existing, "email_verified", False) and existing.role == "student":
+            create_and_send_otp(db, existing)
+            return {"accountExistsUnverified": True}
         raise HTTPException(status_code=409, detail="An account with that email already exists.")
-    # Force student role - admin accounts can only be assigned by existing admins
-    if payload.role != "student":
+    # Force student/teacher role - admin accounts can only be assigned by existing admins
+    if payload.role not in ("student", "teacher"):
         raise HTTPException(status_code=403, detail="Admin accounts can only be assigned by existing administrators.")
     user = models.User(
         name=payload.name,
         email=payload.email,
         hashed_password=hash_password(payload.password),
-        role="student",  # Force student role
-        status="pending",  # Students are pending until admin approval
+        role=payload.role,  # student or teacher; never admin
+        status="pending",  # Registrants stay pending until an admin approves them
         genres="",
+        department=payload.department or "",
+        session=payload.session or "",
+        student_id=payload.student_id or "",
     )
     db.add(user)
+    db.flush()  # assign the id before we reference it below
+    # Auto-issue a library card: sequential number prefixed by role, valid
+    # for 4 years from the session's starting year.
+    issue_card_number(db, user)
     db.commit()
     db.refresh(user)
-    # Create a verification code and send email
-    from datetime import datetime, timedelta
-    code = f"{__import__('random').randint(100000,999999)}"
-    expires = (datetime.utcnow() + timedelta(minutes=15)).isoformat()
-    ev = models.EmailVerification(user_id=user.id, code=code, expires_at=expires)
-    db.add(ev)
-    db.commit()
-    # send email (best-effort)
-    try:
-        send_verification_email(user.email, code)
-    except Exception as e:
-        print(f"[register] Email verification failed for {user.email}: {e}")
+    create_and_send_otp(db, user)
     # Email verification is required; students remain pending until an admin approves them.
     return {"pendingVerification": True, "pendingApproval": True}
 
@@ -140,16 +198,7 @@ def resend_verification(payload: schemas.ResendVerifyIn, db: Session = Depends(g
         raise HTTPException(status_code=404, detail="User not found.")
     if getattr(user, "email_verified", False):
         raise HTTPException(status_code=400, detail="Email is already verified.")
-    from datetime import datetime, timedelta
-    code = f"{__import__('random').randint(100000,999999)}"
-    expires = (datetime.utcnow() + timedelta(minutes=15)).isoformat()
-    ev = models.EmailVerification(user_id=user.id, code=code, expires_at=expires)
-    db.add(ev)
-    db.commit()
-    try:
-        send_verification_email(user.email, code)
-    except Exception:
-        pass
+    create_and_send_otp(db, user)
     return {"status": "ok"}
 
 
@@ -160,7 +209,7 @@ def login(payload: schemas.LoginIn, db: Session = Depends(get_db)):
         raise HTTPException(status_code=401, detail="Incorrect email or password.")
     if not getattr(user, 'email_verified', False):
         raise HTTPException(status_code=403, detail="Email not verified. Please verify your email before signing in.")
-    if user.role == "student" and getattr(user, 'status', 'approved') != "approved":
+    if user.role != "admin" and getattr(user, 'status', 'approved') != "approved":
         raise HTTPException(status_code=403, detail="Your account is pending admin approval.")
     token = create_access_token(user.id)
     return schemas.TokenOut(token=token, user=user_out(user))
@@ -171,6 +220,26 @@ def me(current_user: models.User = Depends(get_current_user)):
     return user_out(current_user)
 
 
+@app.put("/api/users/me", response_model=schemas.UserOut)
+def update_profile(
+    payload: schemas.ProfileUpdateIn,
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(get_current_user),
+):
+    """Self-service profile update: name, academic info and optional password change."""
+    data = payload.dict(exclude_unset=True, exclude_none=True)
+    if "name" in data and not data["name"]:
+        raise HTTPException(status_code=400, detail="Name cannot be empty.")
+    if data.get("password"):
+        current_user.hashed_password = hash_password(data["password"])
+    for field in ("name", "department", "session", "student_id"):
+        if field in data:
+            setattr(current_user, field, data[field])
+    db.commit()
+    db.refresh(current_user)
+    return user_out(current_user)
+
+
 # ===========================================================================
 # Admin approval flow
 # ===========================================================================
@@ -178,7 +247,7 @@ def me(current_user: models.User = Depends(get_current_user)):
 def list_pending_users(db: Session = Depends(get_db), admin: models.User = Depends(require_admin)):
     users = (
         db.query(models.User)
-        .filter(models.User.role == "student", models.User.status == "pending")
+        .filter(models.User.role.in_(["student", "teacher"]), models.User.status == "pending")
         .order_by(models.User.name.asc())
         .all()
     )
@@ -196,8 +265,8 @@ def approve_user(user_id: str, db: Session = Depends(get_db), admin: models.User
     user = db.query(models.User).filter(models.User.id == user_id).first()
     if not user:
         raise HTTPException(status_code=404, detail="User not found.")
-    if user.role != "student":
-        raise HTTPException(status_code=400, detail="Only student accounts can be approved.")
+    if user.role not in ("student", "teacher"):
+        raise HTTPException(status_code=400, detail="Only student or teacher accounts can be approved.")
     if not user.email_verified:
         raise HTTPException(status_code=400, detail="User must verify their email before admin approval.")
     user.status = "approved"
@@ -345,6 +414,9 @@ def create_admin_notification(payload: schemas.AdminNotificationCreateIn, db: Se
     if not recipients:
         raise HTTPException(status_code=404, detail="No recipients found.")
 
+    # One shared group id ties together every copy of this broadcast so the
+    # admin can edit or delete the whole notification at once.
+    broadcast_id = f"nb_{uuid.uuid4().hex[:10]}"
     for recipient in recipients:
         db.add(models.Notification(
             user_id=recipient.id,
@@ -352,9 +424,74 @@ def create_admin_notification(payload: schemas.AdminNotificationCreateIn, db: Se
             body=body,
             read=False,
             created_at=date.today(),
+            broadcast_id=broadcast_id,
         ))
     db.commit()
-    return {"status": "ok", "count": len(recipients)}
+    return {"status": "ok", "count": len(recipients), "id": broadcast_id}
+
+
+@app.get("/api/admin/notifications")
+def list_admin_notifications(db: Session = Depends(get_db), admin: models.User = Depends(require_admin)):
+    """Every admin-created notification (broadcasts), one entry per broadcast group."""
+    rows = (
+        db.query(models.Notification)
+        .filter(models.Notification.broadcast_id != "", models.Notification.broadcast_id.isnot(None))
+        .all()
+    )
+    groups: dict = {}
+    for n in rows:
+        groups.setdefault(n.broadcast_id, []).append(n)
+    items = []
+    for gid, members in groups.items():
+        first = members[0]
+        items.append({
+            "id": gid,
+            "title": first.title,
+            "body": first.body,
+            "created_at": first.created_at,
+            "recipients": len(members),
+            "unread": sum(1 for m in members if not m.read),
+        })
+    items.sort(key=lambda x: x["created_at"], reverse=True)
+    return {"items": items}
+
+
+@app.put("/api/admin/notifications/{group_id}")
+def update_admin_notification(
+    group_id: str,
+    payload: schemas.AdminNotificationUpdateIn,
+    db: Session = Depends(get_db),
+    admin: models.User = Depends(require_admin),
+):
+    """Edit the title/body of every copy belonging to a broadcast group."""
+    title = payload.title.strip()
+    body = payload.body.strip()
+    if not title or not body:
+        raise HTTPException(status_code=400, detail="Title and body are required.")
+    members = db.query(models.Notification).filter(models.Notification.broadcast_id == group_id).all()
+    if not members:
+        raise HTTPException(status_code=404, detail="Notification not found.")
+    for m in members:
+        m.title = title
+        m.body = body
+    db.commit()
+    return {"status": "ok", "count": len(members)}
+
+
+@app.delete("/api/admin/notifications/{group_id}")
+def delete_admin_notification(
+    group_id: str,
+    db: Session = Depends(get_db),
+    admin: models.User = Depends(require_admin),
+):
+    """Delete every copy belonging to a broadcast group."""
+    members = db.query(models.Notification).filter(models.Notification.broadcast_id == group_id).all()
+    if not members:
+        raise HTTPException(status_code=404, detail="Notification not found.")
+    for m in members:
+        db.delete(m)
+    db.commit()
+    return {"status": "ok", "deleted": len(members)}
 
 
 @app.get("/api/fines", response_model=schemas.FineListOut)
@@ -394,10 +531,16 @@ def pay_fine(fine_id: str, db: Session = Depends(get_db), current_user: models.U
 # ===========================================================================
 # Books
 # ===========================================================================
-@app.get("/api/books", response_model=schemas.BookListOut)
+@app.get(
+    "/api/books",
+    response_model=schemas.BookListOut,
+)
 def list_books(
     search: Optional[str] = Query(default=""),
     genre: Optional[str] = Query(default=""),
+    department: Optional[str] = Query(default=""),
+    session: Optional[str] = Query(default=""),
+    category: Optional[str] = Query(default=""),
     page: int = Query(default=1, ge=1),
     page_size: int = Query(default=100, ge=1, le=200),
     db: Session = Depends(get_db),
@@ -409,9 +552,24 @@ def list_books(
         q = q.filter(or_(models.Book.title.ilike(like), models.Book.author.ilike(like), models.Book.isbn.ilike(like)))
     if genre:
         q = q.filter(models.Book.genre == genre)
+    if department:
+        q = q.filter(models.Book.department == department)
+    if session:
+        q = q.filter(models.Book.session == session)
+    if category:
+        q = q.filter(models.Book.category == category)
     total = q.count()
     items = q.order_by(models.Book.added_at.desc()).offset((page - 1) * page_size).limit(page_size).all()
-    return schemas.BookListOut(items=[book_out(b) for b in items], total=total)
+    # Facets are computed over the whole table (ignoring the active filters)
+    # so dropdown options stay stable while filtering.
+    return schemas.BookListOut(
+        items=[book_out(b) for b in items],
+        total=total,
+        departments=_distinct_values(db, models.Book.department),
+        sessions=_distinct_values(db, models.Book.session),
+        genres=_distinct_values(db, models.Book.genre),
+        categories=_distinct_values(db, models.Book.category),
+    )
 
 
 @app.get("/api/books/{book_id}", response_model=schemas.BookOut)
@@ -428,6 +586,8 @@ def add_book(payload: schemas.BookIn, db: Session = Depends(get_db), admin: mode
         title=payload.title, author=payload.author, isbn=payload.isbn, genre=payload.genre,
         call_number=payload.call_number or "", copies=payload.copies, available=payload.copies,
         description=payload.description or "", cover_url=payload.cover_url or "", added_at=date.today(),
+        department=payload.department or "", session=payload.session or "",
+        category=payload.category or "non-academic",
     )
     db.add(book)
     db.flush()
@@ -484,6 +644,9 @@ def borrow_book(book_id: str, db: Session = Depends(get_db), current_user: model
     book = db.query(models.Book).filter(models.Book.id == book_id).first()
     if not book:
         raise HTTPException(status_code=404, detail="Book not found.")
+    # Admins manage the library -- they cannot borrow books themselves.
+    if current_user.role == "admin":
+        raise HTTPException(status_code=403, detail="Admin accounts cannot borrow books.")
     if book.available < 1:
         raise HTTPException(status_code=400, detail="No copies available.")
     book.available -= 1
@@ -509,6 +672,164 @@ def return_book(book_id: str, db: Session = Depends(get_db), current_user: model
     db.commit()
     db.refresh(book)
     return book_out(book)
+
+
+# ===========================================================================
+# Admin: marked return + review moderation / manual reviews
+# ===========================================================================
+@app.post("/api/admin/borrows/{borrow_id}/return")
+def admin_mark_return(
+    borrow_id: str,
+    db: Session = Depends(get_db),
+    admin: models.User = Depends(require_admin),
+):
+    """Mark an active loan as returned from the dashboard."""
+    br = db.query(models.Borrow).filter(models.Borrow.id == borrow_id).first()
+    if not br:
+        raise HTTPException(status_code=404, detail="Borrow record not found.")
+    if br.returned_at is not None:
+        raise HTTPException(status_code=400, detail="That loan is already returned.")
+    br.returned_at = date.today()
+    book = db.query(models.Book).filter(models.Book.id == br.book_id).first()
+    available_after = min(book.copies, book.available + 1) if book else None
+    if book:
+        book.available = available_after
+    db.commit()
+    return {"status": "ok", "borrow_id": br.id, "returned_at": date.today(), "available": available_after}
+
+
+def _review_out(r: models.Review) -> schemas.ReviewOut:
+    return schemas.ReviewOut(
+        id=r.id,
+        book_id=r.book_id,
+        reviewer_name=r.reviewer_name or (r.user.name if r.user else "Member"),
+        rating=r.rating,
+        comment=r.comment or "",
+        status=r.status,
+        created_at=r.created_at,
+    )
+
+
+@app.get("/api/books/{book_id}/reviews", response_model=schemas.ReviewListOut)
+def list_book_reviews(
+    book_id: str,
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(get_current_user),
+):
+    """Approved reviews for a book; also reports whether the caller may write one
+    (only members who borrowed the book — admins cannot borrow, hence never can)."""
+    book = db.query(models.Book).filter(models.Book.id == book_id).first()
+    if not book:
+        raise HTTPException(status_code=404, detail="Book not found.")
+    items = (
+        db.query(models.Review)
+        .filter(models.Review.book_id == book.id, models.Review.status == "approved")
+        .order_by(models.Review.created_at.desc())
+        .all()
+    )
+    has_borrowed = (
+        current_user.role != "admin"
+        and db.query(models.Borrow)
+        .filter(models.Borrow.user_id == current_user.id, models.Borrow.book_id == book.id)
+        .first()
+        is not None
+    )
+    return schemas.ReviewListOut(items=[_review_out(r) for r in items], can_review=has_borrowed)
+
+
+@app.post("/api/books/{book_id}/reviews", response_model=schemas.ReviewOut, status_code=status.HTTP_201_CREATED)
+def create_book_review(
+    book_id: str,
+    payload: schemas.ReviewIn,
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(get_current_user),
+):
+    """Students/teachers who borrowed this book may submit a review.
+    Submissions land in the pending queue for admin moderation."""
+    if current_user.role == "admin":
+        raise HTTPException(status_code=403, detail="Admins manage reviews instead of writing them.")
+    book = db.query(models.Book).filter(models.Book.id == book_id).first()
+    if not book:
+        raise HTTPException(status_code=404, detail="Book not found.")
+    has_borrowed = (
+        db.query(models.Borrow)
+        .filter(models.Borrow.user_id == current_user.id, models.Borrow.book_id == book.id)
+        .first()
+    )
+    if not has_borrowed:
+        raise HTTPException(status_code=403, detail="Only members who have borrowed this book can review it.")
+    review = models.Review(
+        book_id=book.id,
+        user_id=current_user.id,
+        reviewer_name=current_user.name,
+        rating=payload.rating,
+        comment=payload.comment.strip(),
+        status="pending",
+    )
+    db.add(review)
+    db.commit()
+    db.refresh(review)
+    return _review_out(review)
+
+
+@app.get("/api/admin/reviews/pending")
+def list_pending_reviews(db: Session = Depends(get_db), admin: models.User = Depends(require_admin)):
+    rows = (
+        db.query(models.Review)
+        .filter(models.Review.status == "pending")
+        .order_by(models.Review.created_at.desc())
+        .all()
+    )
+    out = []
+    for r in rows:
+        item = _review_out(r).dict()
+        item["bookTitle"] = r.book.title if r.book else ""
+        out.append(item)
+    return {"items": out}
+
+
+def _moderate_review(review_id: str, new_status: str, db: Session):
+    review = db.query(models.Review).filter(models.Review.id == review_id).first()
+    if not review:
+        raise HTTPException(status_code=404, detail="Review not found.")
+    review.status = new_status
+    db.commit()
+    db.refresh(review)
+    return _review_out(review)
+
+
+@app.post("/api/admin/reviews/{review_id}/approve", response_model=schemas.ReviewOut)
+def approve_review(review_id: str, db: Session = Depends(get_db), admin: models.User = Depends(require_admin)):
+    return _moderate_review(review_id, "approved", db)
+
+
+@app.post("/api/admin/reviews/{review_id}/reject", response_model=schemas.ReviewOut)
+def reject_review(review_id: str, db: Session = Depends(get_db), admin: models.User = Depends(require_admin)):
+    return _moderate_review(review_id, "rejected", db)
+
+
+@app.post("/api/admin/reviews", response_model=schemas.ReviewOut, status_code=status.HTTP_201_CREATED)
+def add_review_manually(
+    payload: schemas.AdminReviewIn,
+    db: Session = Depends(get_db),
+    admin: models.User = Depends(require_admin),
+):
+    """Admin-authored review; published immediately."""
+    book = db.query(models.Book).filter(models.Book.id == payload.book_id).first()
+    if not book:
+        raise HTTPException(status_code=404, detail="Book not found.")
+    review = models.Review(
+        book_id=book.id,
+        user_id=admin.id,
+        reviewer_name=f"{admin.name} (Librarian)",
+        rating=payload.rating,
+        comment=payload.comment.strip(),
+        status="approved",
+    )
+    db.add(review)
+    db.commit()
+    db.refresh(review)
+    return _review_out(review)
 
 
 # ===========================================================================
@@ -571,6 +892,33 @@ def health():
 
 
 # ===========================================================================
+# Cover image upload (admin). Accepts real JPEGs only, <=5MB.
+# ===========================================================================
+MAX_COVER_BYTES = 5 * 1024 * 1024  # 5MB
+
+
+@app.post("/api/uploads/cover")
+async def upload_cover(file: UploadFile = File(...), admin: models.User = Depends(require_admin)):
+    """Store a JPEG book cover and return its public URL (e.g. /covers/<id>.jpg)."""
+    content_type = (file.content_type or "").lower()
+    filename = (file.filename or "").lower()
+    if content_type not in ("image/jpeg", "image/jpg") and not filename.endswith((".jpg", ".jpeg")):
+        raise HTTPException(status_code=400, detail="Only JPG/JPEG images are accepted.")
+    data = await file.read(MAX_COVER_BYTES + 1)
+    if len(data) > MAX_COVER_BYTES:
+        raise HTTPException(status_code=400, detail="Cover image must be 5MB or smaller.")
+    if not data:
+        raise HTTPException(status_code=400, detail="Uploaded file is empty.")
+    # Verify the JPEG magic bytes — never trust the client-supplied name/type alone.
+    if not data.startswith(b"\xff\xd8\xff"):
+        raise HTTPException(status_code=400, detail="That file is not a valid JPEG image.")
+    fname = f"{uuid.uuid4().hex[:12]}.jpg"
+    _covers_dir.mkdir(parents=True, exist_ok=True)
+    (_covers_dir / fname).write_bytes(data)
+    return {"url": f"/covers/{fname}"}
+
+
+# ===========================================================================
 # Optionally serve static frontend assets/pages from the same process.
 # By default this points at the repository root where index/login/dashboard
 # plus css/js live in this project structure.
@@ -598,6 +946,14 @@ if _frontend_dir.is_dir():
         app.mount("/css", StaticFiles(directory=str(css_dir)), name="frontend-css")
     if js_dir.is_dir():
         app.mount("/js", StaticFiles(directory=str(js_dir)), name="frontend-js")
+
+    # Uploaded book-cover images live here and are served at /covers/*.
+    _covers_dir = _frontend_dir / "covers"
+    try:
+        _covers_dir.mkdir(parents=True, exist_ok=True)
+        app.mount("/covers", StaticFiles(directory=str(_covers_dir)), name="frontend-covers")
+    except OSError:
+        pass
 
 
 @app.get("/")

@@ -20,5 +20,8 @@ window.LIB_CONFIG = {
     notificationRead: (id) => `/notifications/${id}/read`, // POST
     verifyEmail: "/auth/verify",         // POST {email,code} -> verify email
     resendVerification: "/auth/resend-verification", // POST {email}
+    profile: "/users/me",                // PUT {name,password?,department?,session?,student_id?}
+    uploadCover: "/uploads/cover",       // POST multipart file -> {url}
+    bookReviews: (id) => `/books/${id}/reviews`, // GET approved | POST member review
   },
 };

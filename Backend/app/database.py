@@ -29,14 +29,35 @@ SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 Base = declarative_base()
 
 
+def _add_column_if_missing(conn, table: str, column: str, ddl_type: str):
+    """Add `column` to `table` if the live schema doesn't have it yet."""
+    inspector = inspect(engine)
+    names = [col["name"] for col in inspector.get_columns(table)]
+    if column not in names:
+        conn.execute(text(f"ALTER TABLE {table} ADD COLUMN {column} {ddl_type}"))
+
+
 def ensure_schema():
     inspector = inspect(engine)
     if not inspector.has_table("users"):
         return
-    columns = [col["name"] for col in inspector.get_columns("users")]
-    if "status" not in columns:
-        with engine.begin() as conn:
+    with engine.begin() as conn:
+        if "status" not in [c["name"] for c in inspector.get_columns("users")]:
             conn.execute(text("ALTER TABLE users ADD COLUMN status VARCHAR NOT NULL DEFAULT 'approved'"))
+        # Lightweight migrations for later-added columns (SQLite & Postgres compatible).
+        _add_column_if_missing(conn, "users", "department", "VARCHAR DEFAULT ''")
+        _add_column_if_missing(conn, "users", "session", "VARCHAR DEFAULT ''")
+        _add_column_if_missing(conn, "users", "student_id", "VARCHAR DEFAULT ''")
+        _add_column_if_missing(conn, "users", "card_number", "VARCHAR DEFAULT ''")
+        _add_column_if_missing(conn, "users", "card_expires_on", "DATE NULL")
+        if inspector.has_table("books"):
+            _add_column_if_missing(conn, "books", "department", "VARCHAR DEFAULT ''")
+            _add_column_if_missing(conn, "books", "session", "VARCHAR DEFAULT ''")
+            _add_column_if_missing(conn, "books", "category", "VARCHAR DEFAULT 'non-academic'")
+        if inspector.has_table("notifications"):
+            _add_column_if_missing(conn, "notifications", "broadcast_id", "VARCHAR DEFAULT ''")
+        # NOTE: brand-new tables (e.g. reviews) are created automatically by
+        # Base.metadata.create_all() at import time -- no ALTER needed here.
 
 
 def get_db():

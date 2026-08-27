@@ -18,10 +18,15 @@ class User(Base):
     name = Column(String, nullable=False)
     email = Column(String, unique=True, index=True, nullable=False)
     hashed_password = Column(String, nullable=False)
-    role = Column(String, nullable=False, default="student")  # "student" | "admin"
+    role = Column(String, nullable=False, default="student")  # "student" | "teacher" | "admin"
     status = Column(String, nullable=False, default="approved")  # "pending" | "approved"
     genres = Column(String, default="")  # comma-separated interest genres
     email_verified = Column(Boolean, default=False)
+    department = Column(String, default="")  # e.g. "CSE", "EEE", "BBA"
+    session = Column(String, default="")     # e.g. "2023-24"
+    student_id = Column(String, default="")  # university roll/ID, e.g. "221-15-4501"
+    card_number = Column(String, default="", index=True)      # library card, e.g. "STU-0001"
+    card_expires_on = Column(Date, nullable=True)             # derived from session (+4 years)
 
     borrows = relationship("Borrow", back_populates="user")
     notifications = relationship("Notification", back_populates="user")
@@ -44,8 +49,12 @@ class Book(Base):
     description = Column(Text, default="")
     cover_url = Column(String, default="")
     added_at = Column(Date, default=date.today)
+    department = Column(String, default="")  # department the book belongs to (optional)
+    session = Column(String, default="")     # academic session tag (optional)
+    category = Column(String, default="non-academic")  # "academic" | "non-academic"
 
     borrows = relationship("Borrow", back_populates="book")
+    reviews = relationship("Review", back_populates="book")
 
 
 class Borrow(Base):
@@ -70,6 +79,7 @@ class Notification(Base):
     body = Column(String, nullable=False)
     read = Column(Boolean, default=False)
     created_at = Column(Date, default=date.today)
+    broadcast_id = Column(String, default="", index=True)  # groups copies of one admin broadcast
 
     user = relationship("User", back_populates="notifications")
 
@@ -91,6 +101,22 @@ class AppSetting(Base):
 
     key = Column(String, primary_key=True)
     value = Column(String, nullable=False)
+
+
+class Review(Base):
+    __tablename__ = "reviews"
+
+    id = Column(String, primary_key=True, default=lambda: gen_id("r"))
+    book_id = Column(String, ForeignKey("books.id"), nullable=False, index=True)
+    user_id = Column(String, ForeignKey("users.id"), nullable=False, index=True)
+    reviewer_name = Column(String, default="")   # denormalized display name
+    rating = Column(Integer, nullable=False)     # 1..5
+    comment = Column(Text, default="")
+    status = Column(String, nullable=False, default="pending")  # "pending" | "approved" | "rejected"
+    created_at = Column(Date, default=date.today)
+
+    book = relationship("Book", back_populates="reviews")
+    user = relationship("User")
 
 
 class Fine(Base):

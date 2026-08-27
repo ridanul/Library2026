@@ -111,13 +111,50 @@
               <input type="email" id="regEmail" required placeholder="you@example.com"
                 class="w-full border border-ink/15 rounded px-3 py-2 bg-white focus:outline-none focus:ring-2 focus:ring-brass" />
             </div>
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div>
+                <label class="block text-xs font-mono uppercase tracking-wide text-charcoal/60 mb-1">Department</label>
+                <select id="regDepartment" required
+                  class="w-full border border-ink/15 rounded px-3 py-2 bg-white focus:outline-none focus:ring-2 focus:ring-brass">
+                  <option value="" disabled selected>Select department</option>
+                </select>
+              </div>
+              <div>
+                <label class="block text-xs font-mono uppercase tracking-wide text-charcoal/60 mb-1">Session</label>
+                <input type="text" id="regSession" required list="sessionList" placeholder="e.g. 2023-24"
+                  class="w-full border border-ink/15 rounded px-3 py-2 bg-white focus:outline-none focus:ring-2 focus:ring-brass" />
+                <datalist id="sessionList"></datalist>
+              </div>
+            </div>
+            <div id="studentIdWrap">
+              <label class="block text-xs font-mono uppercase tracking-wide text-charcoal/60 mb-1">Student ID (12 digits)</label>
+              <input type="text" id="regStudentId" required inputmode="numeric" maxlength="12" pattern="\d{12}"
+                placeholder="e.g. 221154150001"
+                class="w-full border border-ink/15 rounded px-3 py-2 bg-white focus:outline-none focus:ring-2 focus:ring-brass" />
+              <p class="text-xs font-mono text-charcoal/50 mt-1">Exactly 12 digits — no hyphens or spaces.</p>
+            </div>
             <div>
               <label class="block text-xs font-mono uppercase tracking-wide text-charcoal/60 mb-1">Password</label>
-              <input type="password" id="regPassword" required minlength="6" placeholder="At least 6 characters"
+              <input type="password" id="regPassword" required minlength="6"
+                pattern="(?=.*[a-z])(?=.*[A-Z])(?=.*[^A-Za-z0-9]).{6,}"
+                title="At least 6 characters, including an uppercase letter, a lowercase letter, and a special character."
+                placeholder="6+ chars with uppercase, lowercase & special"
                 class="w-full border border-ink/15 rounded px-3 py-2 bg-white focus:outline-none focus:ring-2 focus:ring-brass" />
+              <p class="text-xs font-mono text-charcoal/50 mt-1 leading-relaxed">
+                Min. 6 characters with at least 1 uppercase letter, 1 lowercase letter, and 1 special character (e.g. !@#$%^&*).
+              </p>
             </div>
 
             <input type="hidden" id="regRole" value="student" />
+
+            <div>
+              <label class="block text-xs font-mono uppercase tracking-wide text-charcoal/60 mb-1">I am a</label>
+              <select id="regRoleType" required
+                class="w-full border border-ink/15 rounded px-3 py-2 bg-white focus:outline-none focus:ring-2 focus:ring-brass">
+                <option value="student" selected>Student</option>
+                <option value="teacher">Teacher</option>
+              </select>
+            </div>
 
             <div id="signupVerificationSection" class="hidden border-t border-ink/10 pt-4 mt-4 space-y-3">
               <p class="text-sm text-charcoal/70">✅ Account created. Enter the OTP sent to your email.</p>
@@ -176,6 +213,31 @@
 <script>
   Auth.redirectIfLoggedIn();
 
+  // Department / session choices shared by the register form (mirrors Backend/app/schemas.py).
+  const REG_DEPARTMENTS = ['CSE', 'EEE', 'CE', 'ME', 'BBA', 'Economics', 'English', 'Law', 'Arts & Humanities', 'Pharmacy'];
+  const REG_SESSIONS = ['2020-21', '2021-22', '2022-23', '2023-24', '2024-25', '2025-26'];
+
+  document.getElementById('regDepartment').innerHTML =
+    '<option value="" disabled selected>Select department</option>' +
+    REG_DEPARTMENTS.map((d) => `<option value="${d}">${d}</option>`).join('');
+  document.getElementById('sessionList').innerHTML =
+    REG_SESSIONS.map((s) => `<option value="${s}"></option>`).join('');
+
+  // Teachers don't provide a student ID; students must enter exactly 12 digits.
+  const studentIdInput = document.getElementById('regStudentId');
+  function syncStudentField() {
+    const isStudent = document.getElementById('regRoleType').value === 'student';
+    document.getElementById('studentIdWrap').classList.toggle('hidden', !isStudent);
+    studentIdInput.required = isStudent;
+    if (!isStudent) studentIdInput.value = '';
+  }
+  studentIdInput.addEventListener('input', () => {
+    // keep only digits, capped at 12 — no hyphens, spaces or letters
+    studentIdInput.value = studentIdInput.value.replace(/\D/g, '').slice(0, 12);
+  });
+  document.getElementById('regRoleType').addEventListener('change', syncStudentField);
+  syncStudentField();
+
   const tabLogin = document.getElementById('tabLogin');
   const tabRegister = document.getElementById('tabRegister');
   const loginForm = document.getElementById('loginForm');
@@ -193,6 +255,7 @@
   let signupEmail = '';
   let signupPassword = '';
   let loginVerificationEmail = '';
+  let existingUnverified = false; // true while resuming verification for an old account
 
   function activateTab(which) {
     const isLogin = which === 'login';
@@ -210,6 +273,12 @@
 
   function hideEl(el) { el.classList.add('hidden'); }
   function showEl(el) { el.classList.remove('hidden'); }
+
+  // Password policy (mirrors Auth.passwordProblem / Backend schemas).
+  // Returns '' when valid, otherwise a human-friendly message.
+  function validatePasswordStrength(pw) {
+    return Auth.passwordProblem(pw);
+  }
 
   function showLoginVerification(email, message) {
     loginVerificationEmail = email;
@@ -256,14 +325,49 @@
       signupEmail = document.getElementById('regEmail').value.trim();
       signupPassword = document.getElementById('regPassword').value;
 
+      const pwProblem = validatePasswordStrength(signupPassword);
+      if (pwProblem) {
+        registerErrorEl.textContent = pwProblem;
+        showEl(registerErrorEl);
+        document.getElementById('regPassword').focus();
+        return;
+      }
+
+      const roleType = document.getElementById('regRoleType').value; // "student" | "teacher"
+      const studentId = roleType === 'student' ? studentIdInput.value.replace(/\D/g, '') : '';
+      if (roleType === 'student' && studentId.length !== 12) {
+        registerErrorEl.textContent = 'Student ID must be exactly 12 digits (no hyphens or spaces).';
+        showEl(registerErrorEl);
+        document.getElementById('regStudentId').focus();
+        return;
+      }
+
       const resp = await Api.register({
         name: document.getElementById('regName').value.trim(),
         email: signupEmail,
         password: signupPassword,
-        role: 'student',
+        role: roleType,
+        department: document.getElementById('regDepartment').value,
+        session: document.getElementById('regSession').value.trim(),
+        student_id: studentId,
       });
 
+      if (resp && resp.accountExistsUnverified === true) {
+        // This email belongs to an account that was never verified —
+        // resume its OTP flow instead of creating a duplicate account.
+        existingUnverified = true;
+        registerSubmitBtn.classList.add('hidden');
+        showEl(signupVerificationSection);
+        registerNoticeEl.textContent = 'You already have an account with this email but it is not verified yet. A fresh OTP has been sent — enter it below to continue.';
+        showEl(registerNoticeEl);
+        document.getElementById('signupVerifyCode').value = '';
+        hideEl(document.getElementById('signupVerifyError'));
+        document.getElementById('signupVerifyCode').focus();
+        return;
+      }
+
       if (resp && (resp.pendingVerification === true || !resp.token)) {
+        existingUnverified = false;
         registerSubmitBtn.classList.add('hidden');
         showEl(signupVerificationSection);
         registerNoticeEl.textContent = 'An OTP has been sent to your email. Enter it below to complete verification.';
@@ -298,6 +402,20 @@
     }
     try {
       const verifyResp = await Api.verifyEmail({ email: signupEmail, code });
+      if (existingUnverified) {
+        // Verified the pre-existing account; never auto-login here because the
+        // password typed into the register form may not match that account.
+        existingUnverified = false;
+        registerNoticeEl.textContent = '✅ Email verified. Please sign in with your existing password.';
+        showEl(registerNoticeEl);
+        hideEl(signupVerificationSection);
+        registerSubmitBtn.classList.remove('hidden');
+        document.getElementById('regPassword').value = '';
+        document.getElementById('loginEmail').value = signupEmail;
+        document.getElementById('loginPassword').focus();
+        activateTab('login');
+        return;
+      }
       if (verifyResp.pendingApproval) {
         registerNoticeEl.textContent = '✅ Email verified. An admin must approve your account before you can sign in.';
         showEl(registerNoticeEl);
@@ -305,6 +423,7 @@
         registerSubmitBtn.classList.remove('hidden');
         registerForm.reset();
         document.getElementById('regRole').value = 'student';
+        document.getElementById('regRoleType').value = 'student';
         document.getElementById('loginEmail').value = signupEmail;
         activateTab('login');
         return;

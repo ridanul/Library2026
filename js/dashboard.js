@@ -74,6 +74,7 @@ function bookCard(book, { showBorrow = true } = {}) {
       <span class="card-tab">${escapeHtml(book.genre || "Unsorted")}</span>
       <h3 class="font-display text-lg text-ink leading-snug mb-0.5">${escapeHtml(book.title)}</h3>
       <p class="text-sm text-charcoal/60 mb-3">${escapeHtml(book.author)}</p>
+      ${(book.department || book.session) ? `<p class="text-xs font-mono text-brass mb-2">${escapeHtml([book.department, book.session].filter(Boolean).join(" · "))}</p>` : ""}
       <p class="text-sm text-charcoal/70 mb-4 line-clamp-3">${escapeHtml(book.description || "")}</p>
       <div class="flex items-center justify-between">
         <span class="stamp ${stampClass}">${stampText}</span>
@@ -96,25 +97,34 @@ const bookGrid = document.getElementById("bookGrid");
 const bookEmpty = document.getElementById("bookEmpty");
 const searchInput = document.getElementById("searchInput");
 const genreFilter = document.getElementById("genreFilter");
+const departmentFilter = document.getElementById("departmentFilter");
+const sessionFilter = document.getElementById("sessionFilter");
+const categoryFilter = document.getElementById("categoryFilter");
+
+const ALL_DEPARTMENTS = ["CSE", "EEE", "CE", "ME", "BBA", "Economics", "English", "Law", "Arts & Humanities", "Pharmacy"];
+const ALL_SESSIONS = ["2020-21", "2021-22", "2022-23", "2023-24", "2024-25", "2025-26"];
+const ALL_CATEGORIES = ["academic", "non-academic"];
+
 let searchDebounce;
-let genreFilterPopulated = false;
 
 async function loadBooks() {
   try {
-    const { items, total } = await Api.listBooks({
+    const resp = await Api.listBooks({
       search: searchInput.value.trim(),
       genre: genreFilter.value,
+      department: departmentFilter.value,
+      session: sessionFilter.value,
       page: state.browse.page,
       page_size: state.browse.pageSize,
     });
-    state.books = items;
-    state.browse.total = total;
-    renderBookGrid(items);
-    populateGenreFilter(items);
+    state.books = resp.items;
+    state.browse.total = resp.total;
+    renderBookGrid(resp.items);
+    populateFilters(resp);
     renderPager(document.getElementById("browsePagination"), {
       page: state.browse.page,
       pageSize: state.browse.pageSize,
-      total,
+      total: resp.total,
       onPageChange: (nextPage) => {
         state.browse.page = nextPage;
         loadBooks();
@@ -126,7 +136,7 @@ async function loadBooks() {
 }
 
 function renderBookGrid(items) {
-  bookGrid.innerHTML = items.map((b) => bookCard(b)).join("");
+  bookGrid.innerHTML = items.map((b) => bookCard(b, { showBorrow: !Auth.isAdmin() })).join("");
   bookEmpty.classList.toggle("hidden", items.length > 0);
   bookGrid.querySelectorAll("[data-borrow]").forEach((btn) => {
     btn.addEventListener("click", () => borrowBook(btn.dataset.borrow));
@@ -139,11 +149,21 @@ function renderBookGrid(items) {
   });
 }
 
-function populateGenreFilter(items) {
-  if (genreFilterPopulated) return;
-  const genres = [...new Set(items.map((b) => b.genre).filter(Boolean))].sort();
-  genreFilter.innerHTML = `<option value="">All genres</option>` + genres.map((g) => `<option value="${escapeHtml(g)}">${escapeHtml(g)}</option>`).join("");
-  genreFilterPopulated = true;
+function fillFilterSelect(sel, options, allLabel) {
+  sel.innerHTML = `<option value="">${allLabel}</option>` +
+    options.map((v) => `<option value="${escapeHtml(v)}"${v === sel.value ? " selected" : ""}>${escapeHtml(v)}</option>`).join("");
+}
+
+// Populate filter dropdowns. Server facets cover the whole catalog so every
+// option stays visible while a filter is active; fall back to what was fetched.
+function populateFilters(facets = {}) {
+  const fallback = (key) => [...new Set(state.books.map((b) => b[key]).filter(Boolean))].sort();
+  fillFilterSelect(genreFilter, facets.genres?.length ? facets.genres : fallback("genre"), "All genres");
+  fillFilterSelect(departmentFilter, facets.departments?.length ? facets.departments : fallback("department"), "All departments");
+  fillFilterSelect(sessionFilter, facets.sessions?.length ? facets.sessions : fallback("session"), "All sessions");
+  // Academic/non-academic is a fixed pair; keep it stable regardless of facets.
+  fillFilterSelect(categoryFilter, facets.categories?.length === 1 ? facets.categories : ALL_CATEGORIES,
+    "Academic & non-academic");
 }
 
 async function borrowBook(id) {
@@ -170,11 +190,35 @@ genreFilter.addEventListener("change", () => {
   loadBooks();
 });
 
+departmentFilter.addEventListener("change", () => {
+  state.browse.page = 1;
+  loadBooks();
+});
+
+sessionFilter.addEventListener("change", () => {
+  state.browse.page = 1;
+  loadBooks();
+});
+
+categoryFilter.addEventListener("change", () => {
+  state.browse.page = 1;
+  loadBooks();
+});
+
 const urlParams = new URLSearchParams(window.location.search);
-if (urlParams.get("q")) {
+if (urlParams.get("q") && !Auth.isAdmin()) {
   searchInput.value = urlParams.get("q");
 }
-loadBooks();
+
+if (Auth.isAdmin()) {
+  // Admins get the management dashboard only: hide Browse / For You entry
+  // points and land directly on the Manage view (borrowing is blocked server-side).
+  document.querySelectorAll('[data-view="browse"], [data-view="recommendations"]')
+    .forEach((btn) => btn.classList.add("hidden"));
+  setView("manage");
+} else {
+  loadBooks();
+}
 
 const bookDetailModal = document.getElementById("bookDetailModal");
 const closeDetail = document.getElementById("closeDetailModal");
@@ -189,28 +233,65 @@ closeDetail?.addEventListener("click", () => bookDetailModal?.classList.add("hid
 
 async function openBookDetail(id) {
   try {
-    const book = await Api.getBook(id);
-    detailCover.src = book.cover_url || "https://via.placeholder.com/160x220?text=Cover";
+    const [book, revResp] = await Promise.all([Api.getBook(id), Api.getBookReviews(id)]);
+    detailCover.src = Api.coverUrl(book.cover_url) || "https://via.placeholder.com/160x220?text=Cover";
+    const metaBits = [book.department, book.session].filter(Boolean).join(" · ");
+    const metaEl = document.getElementById("detailMeta");
+    if (metaEl) {
+      metaEl.textContent = metaBits;
+      metaEl.classList.toggle("hidden", !metaBits);
+    }
     detailTitle.textContent = book.title;
     detailAuthor.textContent = book.author;
     detailIsbn.textContent = `ISBN: ${book.isbn}`;
     detailDescription.textContent = book.description || "";
     detailAvailable.textContent = book.available > 0 ? `${book.available} available` : "checked out";
-    detailBorrowBtn.disabled = book.available < 1;
-    detailBorrowBtn.onclick = async () => {
-      try {
-        await Api.borrowBook(book.id);
-        toast("Borrowed — enjoy the read.");
-        bookDetailModal.classList.add("hidden");
-        loadBooks();
-      } catch (err) {
-        toast(err.message || "Could not borrow that book.");
-      }
-    };
+    // Admins cannot borrow -- hide the button entirely for them.
+    if (Auth.isAdmin()) {
+      detailBorrowBtn.disabled = true;
+      detailBorrowBtn.classList.add("hidden");
+    } else {
+      detailBorrowBtn.classList.remove("hidden");
+      detailBorrowBtn.disabled = book.available < 1;
+      detailBorrowBtn.onclick = async () => {
+        try {
+          await Api.borrowBook(book.id);
+          toast("Borrowed — enjoy the read.");
+          bookDetailModal.classList.add("hidden");
+          loadBooks();
+        } catch (err) {
+          toast(err.message || "Could not borrow that book.");
+        }
+      };
+    }
+    renderReviews(revResp);
+    document.getElementById("reviewBookId").value = id;
+    document.getElementById("reviewComment").value = "";
     bookDetailModal.classList.remove("hidden");
   } catch (err) {
     toast(err.message || "Could not load book details.");
   }
+}
+
+function starsFor(rating) {
+  return "★".repeat(rating) + "☆".repeat(5 - rating);
+}
+
+function renderReviews(resp) {
+  const wrap = document.getElementById("detailReviews");
+  const form = document.getElementById("reviewForm");
+  if (!wrap || !form) return;
+  const items = resp.items || [];
+  wrap.innerHTML = items.length
+    ? items.map((r) => `
+        <div class="rounded border border-ink/10 bg-white p-2">
+          <p class="text-sm text-ink">${starsFor(r.rating)} <span class="font-medium ml-1">${escapeHtml(r.reviewer_name)}</span></p>
+          <p class="text-sm text-charcoal/70">${escapeHtml(r.comment)}</p>
+          <p class="font-mono text-[11px] text-charcoal/40">${escapeHtml(String(r.created_at || ""))}</p>
+        </div>`).join("")
+    : `<p class="text-sm text-charcoal/50">No approved reviews yet.</p>`;
+  // Only members who borrowed this book get the write-review form.
+  form.classList.toggle("hidden", !resp.can_review);
 }
 
 const settingsModal = document.getElementById("settingsModal");
@@ -280,7 +361,7 @@ async function loadRecommendations() {
     document.getElementById("interestChips").innerHTML = genres.length
       ? genres.map((g) => `<span class="stamp stamp-new border-brass text-brass">${escapeHtml(g)}</span>`).join("")
       : `<span class="text-sm text-charcoal/50">No interests set yet.</span>`;
-    document.getElementById("recGrid").innerHTML = items.map((b) => bookCard(b)).join("");
+    document.getElementById("recGrid").innerHTML = items.map((b) => bookCard(b, { showBorrow: !Auth.isAdmin() })).join("");
     document.getElementById("recEmpty").classList.toggle("hidden", items.length > 0);
     document.getElementById("recGrid").querySelectorAll("[data-borrow]").forEach((btn) => {
       btn.addEventListener("click", () => borrowBook(btn.dataset.borrow));
@@ -328,6 +409,16 @@ document.getElementById("saveInterestsBtn")?.addEventListener("click", async () 
 });
 
 async function loadNotifications() {
+  if (Auth.isAdmin()) {
+    // Admins manage notifications instead of viewing a personal inbox.
+    document.getElementById("adminNotifSection").classList.remove("hidden");
+    document.getElementById("memberNotifWrap").classList.add("hidden");
+    initAdminNotifications();
+    loadAdminNotifications();
+    return;
+  }
+  document.getElementById("adminNotifSection").classList.add("hidden");
+  document.getElementById("memberNotifWrap").classList.remove("hidden");
   try {
     const { items } = await Api.getNotifications();
     const list = document.getElementById("notifList");
@@ -353,6 +444,128 @@ async function loadNotifications() {
   } catch (err) {
     toast(err.message || "Could not load notifications.");
   }
+}
+
+let adminNotifBound = false;
+
+function populateAdminNotifUser() {
+  const userSel = document.getElementById("adminNotifUser");
+  if (!userSel) return;
+  userSel.innerHTML = (state.admin.users || []).map((u) =>
+    `<option value="${u.id}">${escapeHtml(u.name)} (${escapeHtml(u.email)})</option>`).join("");
+}
+
+function adminNotifTargetVisible() {
+  const target = document.getElementById("adminNotifTarget");
+  document.getElementById("adminNotifUserWrap").classList.toggle("hidden", target?.value !== "user");
+}
+
+function resetAdminNotifForm() {
+  const gid = document.getElementById("adminNotifGroupId");
+  if (!gid) return;
+  document.getElementById("adminNotifTitle").value = "";
+  document.getElementById("adminNotifBody").value = "";
+  const statusEl = document.getElementById("adminNotifStatus");
+  statusEl.textContent = "";
+  statusEl.className = "text-sm text-charcoal/60";
+  document.getElementById("adminNotifFormTitle").textContent = "Send notification";
+  document.getElementById("adminNotifSendBtn").textContent = "Send notification";
+  document.getElementById("adminNotifTarget").disabled = false;
+  document.getElementById("adminNotifCancelEditBtn").classList.add("hidden");
+  adminNotifTargetVisible();
+}
+
+function initAdminNotifications() {
+  const target = document.getElementById("adminNotifTarget");
+  if (adminNotifBound || !target) return;
+  adminNotifBound = true;
+  populateAdminNotifUser();
+  target.addEventListener("change", adminNotifTargetVisible);
+  document.getElementById("adminNotifSendBtn").addEventListener("click", async () => {
+    const groupId = document.getElementById("adminNotifGroupId").value;
+    const title = document.getElementById("adminNotifTitle").value.trim();
+    const body = document.getElementById("adminNotifBody").value.trim();
+    const statusEl = document.getElementById("adminNotifStatus");
+    if (!title || !body) {
+      statusEl.textContent = "Title and message are required.";
+      statusEl.className = "text-sm text-rust";
+      return;
+    }
+    try {
+      if (groupId) {
+        await Api.updateAdminNotification(groupId, { title, body });
+        statusEl.textContent = "Notification updated for all recipients.";
+      } else {
+        const payload = { title, body, target: target.value };
+        if (target.value === "user") payload.user_id = document.getElementById("adminNotifUser").value;
+        const res = await Api.createAdminNotification(payload);
+        statusEl.textContent = `Sent to ${res.count} recipient(s).`;
+      }
+      statusEl.className = "text-sm text-sage";
+      resetAdminNotifForm();
+      loadAdminNotifications();
+    } catch (err) {
+      statusEl.textContent = err.message || "Could not save notification.";
+      statusEl.className = "text-sm text-rust";
+    }
+  });
+  document.getElementById("adminNotifCancelEditBtn").addEventListener("click", resetAdminNotifForm);
+  adminNotifTargetVisible();
+}
+
+async function loadAdminNotifications() {
+  const listEl = document.getElementById("adminNotifList");
+  if (!listEl) return;
+  populateAdminNotifUser();
+  try {
+    const { items } = await Api.adminNotifications();
+    listEl.innerHTML = items.length
+      ? items.map((n) => `
+          <div class="rounded border border-ink/10 bg-white p-3">
+            <div class="flex items-start justify-between gap-2">
+              <div class="flex-1">
+                <p class="font-medium text-ink text-sm">${escapeHtml(n.title)}</p>
+                <p class="text-sm text-charcoal/70">${escapeHtml(n.body)}</p>
+                <p class="font-mono text-[11px] text-charcoal/40 mt-1">${escapeHtml(String(n.created_at))} · ${n.recipients} recipient(s) · ${n.unread} unread</p>
+              </div>
+              <div class="flex gap-2 flex-shrink-0">
+                <button data-editnotif="${n.id}" class="text-xs font-mono text-ink hover:underline">Edit</button>
+                <button data-delnotif="${n.id}" class="text-xs font-mono text-rust hover:underline">Delete</button>
+              </div>
+            </div>
+          </div>`).join("")
+      : `<p class="text-sm text-charcoal/50">No notifications sent yet. Compose one above.</p>`;
+    listEl.querySelectorAll("[data-editnotif]").forEach((b) => {
+      const item = items.find((x) => x.id === b.dataset.editnotif);
+      if (item) b.addEventListener("click", () => startEditNotification(item));
+    });
+    listEl.querySelectorAll("[data-delnotif]").forEach((b) =>
+      b.addEventListener("click", async () => {
+        if (!confirm("Delete this notification for all recipients?")) return;
+        try {
+          await Api.deleteAdminNotification(b.dataset.delnotif);
+          toast("Notification deleted.");
+          loadAdminNotifications();
+        } catch (err) {
+          toast(err.message || "Could not delete the notification.");
+        }
+      })
+    );
+  } catch (err) {
+    listEl.innerHTML = `<p class="text-sm text-rust">${escapeHtml(err.message || "Could not load notifications.")}</p>`;
+  }
+}
+
+function startEditNotification(n) {
+  resetAdminNotifForm();
+  document.getElementById("adminNotifGroupId").value = n.id;
+  document.getElementById("adminNotifTitle").value = n.title;
+  document.getElementById("adminNotifBody").value = n.body;
+  document.getElementById("adminNotifFormTitle").textContent = "Edit notification";
+  document.getElementById("adminNotifSendBtn").textContent = "Save changes";
+  document.getElementById("adminNotifCancelEditBtn").classList.remove("hidden");
+  document.getElementById("adminNotifTarget").disabled = true;
+  document.getElementById("adminNotifUserWrap").classList.add("hidden");
 }
 
 function refreshNotifDotFrom(items) {
@@ -383,14 +596,46 @@ function openBookModal(book = null) {
   document.getElementById("bookCallNumber").value = book?.call_number || "";
   document.getElementById("bookCopies").value = book?.copies || 1;
   document.getElementById("bookDescription").value = book?.description || "";
+  document.getElementById("bookDepartment").value = book?.department || "";
+  document.getElementById("bookSession").value = book?.session || "";
+  document.getElementById("bookCategory").value = book?.category || "non-academic";
   document.getElementById("bookFormError").classList.add("hidden");
   document.getElementById("genreList").innerHTML = ALL_GENRES.map((g) => `<option value="${g}">`).join("");
+  document.getElementById("bookDeptList").innerHTML = ALL_DEPARTMENTS.map((d) => `<option value="${d}">`).join("");
+  document.getElementById("bookSessionList").innerHTML = ALL_SESSIONS.map((s) => `<option value="${s}">`).join("");
+  document.getElementById("bookCoverFile").value = "";
+  const preview = document.getElementById("bookCoverPreview");
+  if (book?.cover_url) {
+    preview.src = Api.coverUrl(book.cover_url);
+    preview.classList.remove("hidden");
+  } else {
+    preview.classList.add("hidden");
+    preview.removeAttribute("src");
+  }
   bookModal.classList.remove("hidden");
 }
 
 document.getElementById("openAddBookBtn")?.addEventListener("click", () => openBookModal());
 document.getElementById("closeBookModal")?.addEventListener("click", () => bookModal.classList.add("hidden"));
 document.getElementById("cancelBookModal")?.addEventListener("click", () => bookModal.classList.add("hidden"));
+
+// Live-preview a chosen cover image; only real JPEGs are allowed through.
+document.getElementById("bookCoverFile")?.addEventListener("change", (e) => {
+  const file = e.target.files[0];
+  const preview = document.getElementById("bookCoverPreview");
+  if (!file) {
+    preview.classList.add("hidden");
+    return;
+  }
+  if (!/^image\/jpe?g$/i.test(file.type)) {
+    toast("Please choose a JPG image.");
+    e.target.value = "";
+    preview.classList.add("hidden");
+    return;
+  }
+  preview.src = URL.createObjectURL(file);
+  preview.classList.remove("hidden");
+});
 
 bookForm?.addEventListener("submit", async (e) => {
   e.preventDefault();
@@ -403,13 +648,22 @@ bookForm?.addEventListener("submit", async (e) => {
     call_number: document.getElementById("bookCallNumber").value.trim(),
     copies: Number(document.getElementById("bookCopies").value),
     description: document.getElementById("bookDescription").value.trim(),
+    department: document.getElementById("bookDepartment").value.trim(),
+    session: document.getElementById("bookSession").value.trim(),
+    category: document.getElementById("bookCategory").value,
   };
   try {
+    // Upload a freshly-picked cover first so it can be attached to the payload.
+    // On edit without a new file, cover_url is omitted and stays unchanged.
+    const coverFile = document.getElementById("bookCoverFile").files[0];
+    if (coverFile) {
+      const up = await Api.uploadCover(coverFile);
+      payload.cover_url = up.url;
+    }
     if (id) await Api.updateBook(id, payload);
     else await Api.addBook(payload);
     bookModal.classList.add("hidden");
     toast(id ? "Book updated." : "Book added to the catalog.");
-    genreFilterPopulated = false;
     loadBooks();
     loadManageTable();
   } catch (err) {
@@ -449,7 +703,6 @@ async function loadManageTable() {
         await Api.deleteBook(btn.dataset.delete);
         toast("Book removed.");
         loadManageTable();
-        genreFilterPopulated = false;
         loadBooks();
       })
     );
@@ -516,12 +769,28 @@ async function loadAdminPanels() {
         <div class="rounded border border-rust/20 bg-rust/5 p-3">
           <p class="font-medium text-ink">${escapeHtml(loan.userName)} — ${escapeHtml(loan.bookTitle)}</p>
           <p class="text-xs font-mono text-charcoal/50">Due ${escapeHtml(loan.due_date)} · not returned</p>
-          <div class="mt-2 flex items-center justify-between gap-2">
+          <div class="mt-2 flex flex-wrap items-center justify-between gap-2">
             <div class="text-xs text-charcoal/60">Overdue days: ${escapeHtml(String(loan.days_overdue || "—"))} · Fine: ${loan.fine ? ("$" + Number(loan.fine).toFixed(2)) : "—"}</div>
-            <button data-charge="${loan.userId}" data-amount="${loan.fine ?? ""}" class="text-xs font-mono bg-ink text-parchment px-3 py-1.5 rounded hover:bg-ink/90">Charge fine</button>
+            <div class="flex items-center gap-2">
+              <button data-return="${loan.id}" class="text-xs font-mono border border-ink/20 text-ink px-3 py-1.5 rounded hover:bg-parchmentDark transition">Mark returned</button>
+              <button data-charge="${loan.userId}" data-amount="${loan.fine ?? ""}" class="text-xs font-mono bg-ink text-parchment px-3 py-1.5 rounded hover:bg-ink/90">Charge fine</button>
+            </div>
           </div>
         </div>`).join("")
       : `<p class="text-sm text-charcoal/50">No overdue loans right now.</p>`;
+
+    overdueList.querySelectorAll("[data-return]").forEach((btn) => {
+      btn.addEventListener("click", async () => {
+        try {
+          await Api.adminReturnLoan(btn.dataset.return);
+          toast("Loan marked as returned.");
+          loadAdminPanels();
+          loadBooks();
+        } catch (err) {
+          toast(err.message || "Could not mark that loan returned.");
+        }
+      });
+    });
 
     overdueList.querySelectorAll("[data-charge]").forEach((btn) => {
       btn.addEventListener("click", () => {
@@ -535,6 +804,9 @@ async function loadAdminPanels() {
     });
 
     initAdminNotificationForm();
+    renderMemberTables();
+    loadPendingReviews();
+    initManualReview();
   } catch (err) {
     document.getElementById("pendingUsersList").innerHTML = `<p class="text-sm text-rust">${escapeHtml(err.message || "Could not load admin panels.")}</p>`;
     document.getElementById("overdueList").innerHTML = "";
@@ -588,6 +860,228 @@ function initAdminNotificationForm() {
   syncTarget();
 }
 
+// ===========================================================================
+// Admin: Students/Teachers tables
+// ===========================================================================
+function memberRow(u) {
+  const statusBadge = u.status === "approved"
+    ? `<span class="stamp stamp-available text-[10px]">approved</span>`
+    : `<span class="stamp stamp-new border-brass text-brass text-[10px]">pending</span>`;
+  const approveBtn = (u.status === "pending")
+    ? `<button data-approve-user="${u.id}" class="text-xs font-mono bg-ink text-parchment px-3 py-1.5 rounded hover:bg-ink/90">Approve</button>`
+    : "";
+  return `<tr class="border-t border-ink/5">
+        <td class="px-4 py-3 font-medium text-ink">${escapeHtml(u.name)}</td>
+        <td class="px-4 py-3 text-charcoal/60">${escapeHtml(u.email)}</td>
+        <td class="px-4 py-3 font-mono text-xs text-charcoal/60">${escapeHtml(u.card_number || "—")}</td>
+        <td class="px-4 py-3 text-xs text-charcoal/60">${escapeHtml([u.department, u.session].filter(Boolean).join(" · ") || "—")}</td>
+        <td class="px-4 py-3">${statusBadge}</td>
+        <td class="px-4 py-3 text-right">${approveBtn}</td>
+      </tr>`;
+}
+
+function renderMemberTables() {
+  const users = state.admin.users || [];
+  const students = users.filter((u) => u.role === "student");
+  const teachers = users.filter((u) => u.role === "teacher");
+  for (const [tbodyId, rows, emptyMsg] of [
+    ["studentsTableBody", students, "No students registered yet."],
+    ["teachersTableBody", teachers, "No teachers registered yet."],
+  ]) {
+    const tbody = document.getElementById(tbodyId);
+    if (!tbody) continue;
+    tbody.innerHTML = rows.length
+      ? rows.map(memberRow).join("")
+      : `<tr><td colspan="6" class="px-4 py-3 text-sm text-charcoal/50">${emptyMsg}</td></tr>`;
+    tbody.querySelectorAll("[data-approve-user]").forEach((btn) =>
+      btn.addEventListener("click", async () => {
+        try {
+          await Api.approveUser(btn.dataset.approveUser);
+          toast("Account approved.");
+          loadAdminPanels();
+        } catch (err) {
+          toast(err.message || "Could not approve account.");
+        }
+      })
+    );
+  }
+}
+
+// ===========================================================================
+// Review moderation + manual admin reviews
+// ===========================================================================
+async function loadPendingReviews() {
+  const listEl = document.getElementById("pendingReviewsList");
+  if (!listEl) return;
+  try {
+    const { items } = await Api.pendingReviews();
+    listEl.innerHTML = items.length
+      ? items.map((r) => `
+          <div class="rounded border border-ink/10 bg-parchment/60 p-3">
+            <p class="text-sm text-ink">${starsFor(r.rating)} · <span class="font-medium">${escapeHtml(r.bookTitle || "")}</span></p>
+            <p class="text-sm text-charcoal/70">${escapeHtml(r.comment)}</p>
+            <p class="text-xs font-mono text-charcoal/50 mb-2">by ${escapeHtml(r.reviewer_name)} · ${escapeHtml(String(r.created_at || ""))}</p>
+            <div class="flex gap-2">
+              <button data-review-approve="${r.id}" class="text-xs font-mono bg-ink text-parchment px-3 py-1.5 rounded hover:bg-ink/90">Approve</button>
+              <button data-review-reject="${r.id}" class="text-xs font-mono border border-rust/30 text-rust px-3 py-1.5 rounded hover:bg-rust/5 transition">Reject</button>
+            </div>
+          </div>`).join("")
+      : `<p class="text-sm text-charcoal/50">No reviews are waiting for moderation.</p>`;
+    listEl.querySelectorAll("[data-review-approve]").forEach((b) =>
+      b.addEventListener("click", () => moderateReview(b.dataset.reviewApprove, Api.approveReview))
+    );
+    listEl.querySelectorAll("[data-review-reject]").forEach((b) =>
+      b.addEventListener("click", () => moderateReview(b.dataset.reviewReject, Api.rejectReview))
+    );
+  } catch (err) {
+    listEl.innerHTML = `<p class="text-sm text-rust">${escapeHtml(err.message || "Could not load pending reviews.")}</p>`;
+  }
+}
+
+async function moderateReview(id, action) {
+  try {
+    await action(id);
+    toast("Review updated.");
+    loadPendingReviews();
+  } catch (err) {
+    toast(err.message || "Could not update the review.");
+  }
+}
+
+let manualReviewBound = false;
+async function initManualReview() {
+  const sel = document.getElementById("manualReviewBook");
+  if (!sel) return;
+  try {
+    const { items } = await Api.listBooks({ page_size: 200 });
+    sel.innerHTML = `<option value="" disabled selected>Select a book</option>` +
+      items.map((b) => `<option value="${b.id}">${escapeHtml(b.title)}</option>`).join("");
+  } catch {
+    // keep existing options; submission fails politely if none was chosen
+  }
+  if (manualReviewBound) return;
+  manualReviewBound = true;
+  document.getElementById("submitManualReviewBtn")?.addEventListener("click", async () => {
+    const bookId = sel.value;
+    const rating = Number(document.getElementById("manualReviewRating").value);
+    const comment = document.getElementById("manualReviewComment").value.trim();
+    if (!bookId) {
+      toast("Choose a book first.");
+      return;
+    }
+    if (!comment) {
+      toast("Write the review comment.");
+      return;
+    }
+    try {
+      await Api.addReviewManually({ book_id: bookId, rating, comment });
+      toast("Review published.");
+      document.getElementById("manualReviewComment").value = "";
+    } catch (err) {
+      toast(err.message || "Could not publish the review.");
+    }
+  });
+}
+
+// Student/teacher review submission from the book detail modal.
+document.getElementById("reviewForm")?.addEventListener("submit", async (e) => {
+  e.preventDefault();
+  const bookId = document.getElementById("reviewBookId").value;
+  const payload = {
+    rating: Number(document.getElementById("reviewRating").value),
+    comment: document.getElementById("reviewComment").value.trim(),
+  };
+  if (!payload.comment) {
+    toast("Please write a short comment with your rating.");
+    return;
+  }
+  try {
+    await Api.addBookReview(bookId, payload);
+    toast("Review submitted — visible after admin approval.");
+    e.target.reset();
+    e.target.classList.add("hidden");
+  } catch (err) {
+    toast(err.message || "Could not submit your review.");
+  }
+});
+
 if (Auth.isAdmin()) {
   loadAdminPanels();
 }
+
+// ===========================================================================
+// Profile modal — self-service edit of name / department / session /
+// student ID plus an optional password change.
+// ===========================================================================
+const profileModal = document.getElementById("profileModal");
+
+function fillProfileModal() {
+  const u = state.user || {};
+  document.getElementById("profName").value = u.name || "";
+  document.getElementById("profEmail").textContent = u.email || "—";
+  const depSel = document.getElementById("profDepartment");
+  if (!depSel.dataset.populated) {
+    depSel.innerHTML =
+      '<option value="">Not set</option>' +
+      ALL_DEPARTMENTS.map((d) => `<option value="${d}">${d}</option>`).join("");
+    depSel.dataset.populated = "1";
+  }
+  depSel.value = u.department || "";
+  if (![...depSel.options].some((o) => o.value === depSel.value)) depSel.value = "";
+  document.getElementById("profSession").value = u.session || "";
+  document.getElementById("profStudentId").value = u.student_id || "";
+  const cardInfo = document.getElementById("profCardInfo");
+  if (u.card_number) {
+    cardInfo.textContent = `Library card ${u.card_number} · valid until ${u.card_valid_until || "—"}`;
+    cardInfo.classList.remove("hidden");
+  } else {
+    cardInfo.classList.add("hidden");
+  }
+  document.getElementById("profPassword").value = "";
+  document.getElementById("profileFormError").classList.add("hidden");
+}
+
+document.getElementById("profileBtn")?.addEventListener("click", () => {
+  fillProfileModal();
+  profileModal.classList.remove("hidden");
+});
+document.getElementById("closeProfileModal")?.addEventListener("click", () => profileModal.classList.add("hidden"));
+document.getElementById("cancelProfileModal")?.addEventListener("click", () => profileModal.classList.add("hidden"));
+
+document.getElementById("profileForm")?.addEventListener("submit", async (e) => {
+  e.preventDefault();
+  const errEl = document.getElementById("profileFormError");
+  errEl.classList.add("hidden");
+  const name = document.getElementById("profName").value.trim();
+  const pw = document.getElementById("profPassword").value;
+  if (!name) {
+    errEl.textContent = "Name cannot be empty.";
+    errEl.classList.remove("hidden");
+    return;
+  }
+  const pwProblem = pw ? Auth.passwordProblem(pw) : "";
+  if (pwProblem) {
+    errEl.textContent = pwProblem;
+    errEl.classList.remove("hidden");
+    return;
+  }
+  const payload = {
+    name,
+    department: document.getElementById("profDepartment").value,
+    session: document.getElementById("profSession").value.trim(),
+    student_id: document.getElementById("profStudentId").value.trim(),
+  };
+  if (pw) payload.password = pw;
+  try {
+    const updated = await Api.updateProfile(payload);
+    state.user = updated;
+    Auth.setSession(localStorage.getItem("lib_token"), updated); // refresh cached user, keep token
+    headerUserName.textContent = updated.name || "Reader";
+    headerUserRole.textContent = updated.role || "student";
+    profileModal.classList.add("hidden");
+    toast("Profile updated.");
+  } catch (err) {
+    errEl.textContent = err.message || "Could not update profile.";
+    errEl.classList.remove("hidden");
+  }
+});

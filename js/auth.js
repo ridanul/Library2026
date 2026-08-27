@@ -31,4 +31,13 @@ const Auth = {
     this.clearSession();
     window.location.href = "login.html";
   },
+  // Password policy mirror of Backend/app/schemas.py validate_password_strength.
+  // Returns '' when valid, otherwise a human-friendly message.
+  passwordProblem(pw) {
+    if (!pw || pw.length < 6) return "Password must be at least 6 characters long.";
+    if (!/[A-Z]/.test(pw)) return "Password must contain at least one uppercase letter.";
+    if (!/[a-z]/.test(pw)) return "Password must contain at least one lowercase letter.";
+    if (!/[^A-Za-z0-9]/.test(pw)) return "Password must contain at least one special character (e.g. !@#$%^&*).";
+    return "";
+  },
 };
