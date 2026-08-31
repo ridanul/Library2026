@@ -1005,3 +1005,8 @@ def frontend_dashboard_page():
 @app.get("/favicon.ico")
 def frontend_favicon():
     return _serve_frontend_page("favicon.ico")
+
+
+@app.get("/kiu_logo.png")
+def frontend_favicon():
+    return _serve_frontend_page("kiu_logo.png")
