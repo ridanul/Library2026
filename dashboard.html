@@ -1,11 +1,12 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
-<meta charset="UTF-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>KiU Library — Dashboard</title>
-<script src="https://cdn.tailwindcss.com"></script>
-<script>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>KiU Library — Dashboard</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+	<script>
   tailwind.config = {
     theme: {
       extend: {
@@ -21,320 +22,341 @@
     },
   };
 </script>
-<link rel="stylesheet" href="css/styles.css" />
+  <link rel="stylesheet" href="css/styles.css" />
 </head>
+
 <body class="paper-texture min-h-screen bg-gray-50 flex flex-col">
 
-  <header class="bg-white border-b border-ink/10 shadow-sm sticky top-0 z-30">
+  <header class="bg-white border-b border-ink/10 shadow-sm sticky top-0 z-50">
     <div class="max-w-7xl mx-auto px-4 sm:px-6 py-4">
       <div class="flex items-center justify-between gap-3">
-        <a href="index.html" class="flex items-center gap-2 text-decoration-none min-w-0">
-          <img src="kiu_logo.png" alt="KiU Library Logo" class="h-10 w-10 sm:h-12 sm:w-12 object-contain" />
-          <h1 class="font-display text-xl sm:text-3xl font-bold text-ink whitespace-nowrap">KiU Library</h1>
-          <p class="hidden md:block text-xs text-charcoal/60 font-mono truncate">Knowledge · Information · Understanding</p>
-        </a>
-
-        <nav class="hidden sm:flex items-center gap-2 md:gap-6 text-sm">
-          <button data-view="browse" class="nav-btn text-ink hover:text-brass transition px-3 py-2">Browse</button>
-          <button data-view="recommendations" class="nav-btn text-ink hover:text-brass transition px-3 py-2">For You</button>
-          <button data-view="notifications" class="nav-btn text-ink hover:text-brass transition px-3 py-2 relative">
-            Notifications
-            <span id="notifDot" class="hidden absolute -top-1 -right-1 w-2 h-2 rounded-full bg-rust"></span>
+        <div class="flex items-center gap-2 sm:gap-3">
+          <!-- Hamburger menu button (visible on mobile) -->
+          <button id="sidebarToggle"
+            class="sm:hidden p-2 rounded border border-ink/20 hover:bg-parchmentDark transition"
+            aria-label="Toggle navigation menu">
+            <svg class="w-5 h-5 text-ink" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16" />
+            </svg>
           </button>
-          <button data-view="manage" id="manageNavBtn" class="nav-btn hidden text-ink hover:text-brass transition px-3 py-2">Manage</button>
-        </nav>
+          <a href="index.html" class="flex items-center gap-2 text-decoration-none min-w-0">
+            <img src="kiu_logo.png" alt="KiU Library Logo" class="h-10 w-9 sm:h-12 sm:w-12 object-contain" />
+            <h1 class="font-display text-lg sm:text-3xl font-bold text-ink whitespace-nowrap">KiU Library</h1>
+            <p class="hidden md:block text-xs text-charcoal/60 font-mono truncate">Knowledge · Information · Understanding</p>
+          </a>
+        </div>
 
         <div class="flex items-center gap-3 sm:gap-4">
           <div class="text-right hidden sm:block text-xs">
             <p class="text-sm font-medium leading-tight text-ink" id="headerUserName">—</p>
             <p class="font-mono uppercase tracking-wide text-brass" id="headerUserRole">—</p>
           </div>
-          <button id="profileBtn" class="text-[10px] font-mono border border-ink/20 rounded px-2 py-1 hover:bg-parchmentDark transition">Profile</button>
-          <button id="logoutBtn" class="text-[10px] font-mono border border-ink/20 rounded px-2 py-1 hover:bg-parchmentDark transition">Sign out</button>
+          <button id="profileBtn"
+            class="text-[8px] sm:text-sm font-mono border border-ink/20 rounded px-2 py-1 sm:px-3 sm:py-2 hover:bg-parchmentDark transition">Profile</button>
+          <button id="logoutBtn"
+            class="text-[8px] sm:text-sm font-mono border border-ink/20 rounded px-1 py-1 sm:px-3 sm:py-2 hover:bg-parchmentDark transition">Sign out</button>
         </div>
-      </div>
-    </div>
-
-    <div class="sm:hidden border-t border-ink/10 overflow-x-auto">
-      <div class="flex gap-1 px-4 pb-3 pt-2 font-mono text-xs uppercase tracking-wide">
-        <button data-view="browse" class="nav-btn px-3 py-1.5 rounded text-ink hover:text-brass whitespace-nowrap">Browse</button>
-        <button data-view="recommendations" class="nav-btn px-3 py-1.5 rounded text-ink hover:text-brass whitespace-nowrap">For You</button>
-        <button data-view="notifications" class="nav-btn px-3 py-1.5 rounded hover:text-brass whitespace-nowrap">Notifications</button>
-        <button data-view="manage" id="manageNavBtnMobile" class="nav-btn hidden px-3 py-1.5 rounded text-ink hover:text-brass whitespace-nowrap">Manage</button>
       </div>
     </div>
   </header>
 
-  <main class="flex-1 max-w-7xl mx-auto px-4 sm:px-6 py-6 sm:py-8 w-full">
-    <section id="view-browse" class="view-panel bg-white rounded-lg p-5 sm:p-8 border border-ink/10 shadow-md">
-      <div class="flex flex-col sm:flex-row sm:items-end justify-between gap-4 mb-6">
-        <div>
-          <p class="font-mono text-xs tracking-[0.2em] text-brass uppercase mb-1">Card Catalog</p>
-          <h1 class="font-display text-3xl text-ink">Search the stacks</h1>
-        </div>
+  <!-- Main Container -->
+  <div class="flex flex-1 min-h-0 relative">
+    
+    <!-- Mobile sidebar overlay -->
+    <div id="sidebarOverlay" class="fixed inset-0 bg-black/50 z-40 hidden sm:hidden"></div>
+    
+    <!-- Sidebar navigation -->
+    <nav id="sidebar"
+      class="fixed inset-y-0 left-0 z-50 w-64 bg-white border-r border-ink/10 shadow-lg transform -translate-x-full transition-transform duration-300 ease-in-out sm:static sm:translate-x-0 sm:w-48 sm:shrink-0 sm:shadow-none sm:border-r sm:bg-white/50">
+      
+      <!-- Mobile Sidebar Header -->
+      <div class="sm:hidden flex items-center justify-between p-4 border-b border-ink/10">
+        <span class="font-display text-lg font-bold text-ink">Menu</span>
+        <button id="sidebarClose" class="p-1 rounded hover:bg-parchmentDark transition" aria-label="Close menu">
+          <svg class="w-5 h-5 text-ink" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+          </svg>
+        </button>
       </div>
 
-      <div class="flex flex-col lg:flex-row gap-3 mb-6">
-        <input id="searchInput" type="text" placeholder="Search by title, author, or ISBN…" class="flex-1 border border-ink/15 rounded px-4 py-2.5 bg-white focus:outline-none focus:ring-2 focus:ring-brass" />
-        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
-          <select id="genreFilter" class="border border-ink/15 rounded px-3 py-2.5 bg-white focus:outline-none focus:ring-2 focus:ring-brass">
-            <option value="">All genres</option>
-          </select>
-          <select id="departmentFilter" class="border border-ink/15 rounded px-3 py-2.5 bg-white focus:outline-none focus:ring-2 focus:ring-brass">
-            <option value="">All departments</option>
-          </select>
-          <select id="sessionFilter" class="border border-ink/15 rounded px-3 py-2.5 bg-white focus:outline-none focus:ring-2 focus:ring-brass">
-            <option value="">All sessions</option>
-          </select>
-          <select id="categoryFilter" class="border border-ink/15 rounded px-3 py-2.5 bg-white focus:outline-none focus:ring-2 focus:ring-brass">
-            <option value="">Academic &amp; non-academic</option>
-            <option value="academic">Academic</option>
-            <option value="non-academic">Non-academic</option>
-          </select>
-        </div>
+      <!-- Navigation Links -->
+      <div class="flex flex-col gap-2 p-4 sm:p-6 sm:sticky sm:top-[77px]">
+        <button data-view="browse" class="nav-btn text-ink hover:text-brass transition px-3 py-2 text-left font-medium rounded hover:bg-parchmentDark/50">Browse</button>
+        <button data-view="recommendations" class="nav-btn text-ink hover:text-brass transition px-3 py-2 text-left font-medium rounded hover:bg-parchmentDark/50">For You</button>
+        <button data-view="notifications" class="nav-btn text-ink hover:text-brass transition px-3 py-2 text-left font-medium rounded hover:bg-parchmentDark/50 relative">
+          Notifications
+          <span id="notifDot" class="hidden absolute top-3 right-3 w-2 h-2 rounded-full bg-rust"></span>
+        </button>
+        <button data-view="manage" id="manageNavBtn" class="nav-btn hidden text-ink hover:text-brass transition px-3 py-2 text-left font-medium rounded hover:bg-parchmentDark/50">Manage</button>
       </div>
+    </nav>
 
-      <div id="bookGrid" class="grid sm:grid-cols-2 lg:grid-cols-3 gap-6"></div>
-      <p id="bookEmpty" class="hidden text-center text-charcoal/50 font-mono text-sm py-12">No books match that search.</p>
-      <div id="browsePagination" class="mt-6 flex flex-wrap items-center justify-center gap-2"></div>
-    </section>
+    <!-- Main Content Wrapper -->
+    <div class="flex-1 flex flex-col min-w-0">
+      <main class="flex-1 max-w-7xl mx-auto px-4 sm:px-6 py-6 sm:py-8 w-full">
+        
+        <!-- BROWSE VIEW -->
+        <section id="view-browse" class="view-panel bg-white rounded-lg p-5 sm:p-8 border border-ink/10 shadow-md">
+          <div class="flex flex-col sm:flex-row sm:items-end justify-between gap-4 mb-6">
+            <div>
+              <p class="font-mono text-xs tracking-[0.2em] text-brass uppercase mb-1">Card Catalog</p>
+              <h1 class="font-display text-3xl text-ink">Search the stacks</h1>
+            </div>
+          </div>
 
-    <section id="view-recommendations" class="view-panel hidden bg-white rounded-lg p-5 sm:p-8 border border-ink/10 shadow-md">
-      <div class="flex flex-col sm:flex-row sm:items-end justify-between gap-4 mb-6">
-        <div>
-          <p class="font-mono text-xs tracking-[0.2em] text-brass uppercase mb-1">Picked for you</p>
-          <h1 class="font-display text-3xl text-ink">Because you read…</h1>
-        </div>
-        <button id="editInterestsBtn" class="text-sm font-mono border border-ink/20 rounded px-3 py-2 hover:bg-parchmentDark transition">Edit interests</button>
-      </div>
-      <div id="interestChips" class="flex flex-wrap gap-2 mb-6"></div>
-      <div id="recGrid" class="grid sm:grid-cols-2 lg:grid-cols-3 gap-6"></div>
-      <p id="recEmpty" class="hidden text-center text-charcoal/50 font-mono text-sm py-12">Add a few interests to get personalized picks.</p>
-    </section>
-
-    <section id="view-notifications" class="view-panel hidden bg-white rounded-lg p-5 sm:p-8 border border-ink/10 shadow-md">
-      <p class="font-mono text-xs tracking-[0.2em] text-brass uppercase mb-1">Circulation Desk</p>
-      <h1 class="font-display text-3xl text-ink mb-6">Notifications</h1>
-
-      <div id="memberNotifWrap">
-        <div id="notifList" class="space-y-3 max-w-2xl"></div>
-        <p id="notifEmpty" class="hidden text-center text-charcoal/50 font-mono text-sm py-12">You're all caught up.</p>
-      </div>
-
-      <div id="adminNotifSection" class="hidden">
-        <div class="border border-ink/10 rounded-lg bg-white/70 p-4 mb-5 max-w-2xl">
-          <h2 id="adminNotifFormTitle" class="font-display text-lg text-ink mb-3">Send notification</h2>
-          <input type="hidden" id="adminNotifGroupId" />
-          <div class="space-y-3">
+          <div class="flex flex-col lg:flex-row gap-3 mb-6">
+            <input id="searchInput" type="text" placeholder="Search by title, author, or ISBN…"
+              class="flex-1 border border-ink/15 rounded px-4 py-2.5 bg-white focus:outline-none focus:ring-2 focus:ring-brass" />
             <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              <div>
-                <label class="block text-xs font-mono uppercase tracking-wide text-charcoal/60 mb-1">Target</label>
-                <select id="adminNotifTarget" class="w-full border border-ink/15 rounded px-3 py-2 bg-white focus:outline-none focus:ring-2 focus:ring-brass">
-                  <option value="all_students">All students</option>
-                  <option value="all_users">All users</option>
-                  <option value="user">Specific user</option>
-                </select>
-              </div>
-              <div id="adminNotifUserWrap" class="hidden">
-                <label class="block text-xs font-mono uppercase tracking-wide text-charcoal/60 mb-1">User</label>
-                <select id="adminNotifUser" class="w-full border border-ink/15 rounded px-3 py-2 bg-white focus:outline-none focus:ring-2 focus:ring-brass"></select>
-              </div>
-            </div>
-            <div>
-              <label class="block text-xs font-mono uppercase tracking-wide text-charcoal/60 mb-1">Title</label>
-              <input id="adminNotifTitle" maxlength="120" class="w-full border border-ink/15 rounded px-3 py-2 bg-white focus:outline-none focus:ring-2 focus:ring-brass" />
-            </div>
-            <div>
-              <label class="block text-xs font-mono uppercase tracking-wide text-charcoal/60 mb-1">Message</label>
-              <textarea id="adminNotifBody" rows="3" class="w-full border border-ink/15 rounded px-3 py-2 bg-white focus:outline-none focus:ring-2 focus:ring-brass"></textarea>
-            </div>
-            <div class="flex flex-wrap gap-2 items-center">
-              <button id="adminNotifSendBtn" class="bg-brass text-white font-medium px-4 py-2 rounded hover:bg-brass/90 transition">Send notification</button>
-              <button id="adminNotifCancelEditBtn" type="button" class="hidden px-4 py-2 rounded border border-ink/20 hover:bg-parchmentDark transition">Cancel edit</button>
-              <p id="adminNotifStatus" class="text-sm text-charcoal/60"></p>
-            </div>
-          </div>
-        </div>
-        <div id="adminNotifList" class="space-y-2 max-w-2xl"></div>
-      </div>
-    </section>
-
-    <section id="view-manage" class="view-panel hidden bg-white rounded-lg p-5 sm:p-8 border border-ink/10 shadow-md">
-      <div class="flex flex-col sm:flex-row sm:items-end justify-between gap-4 mb-6">
-        <div>
-          <p class="font-mono text-xs tracking-[0.2em] text-brass uppercase mb-1">Librarian Desk</p>
-          <h1 class="font-display text-3xl text-ink">Manage the collection</h1>
-        </div>
-        <div class="flex flex-wrap gap-2">
-          <button id="openAddBookBtn" class="bg-brass text-white font-medium px-4 py-2.5 rounded hover:bg-brass/90 transition">+ Add a book</button>
-          <button id="openSettingsBtn" class="bg-parchmentDark text-ink font-medium px-3 py-2.5 rounded hover:bg-parchment transition">Library Settings</button>
-        </div>
-      </div>
-
-      <div class="overflow-x-auto border border-ink/10 rounded-lg bg-white">
-        <table class="w-full text-sm border-collapse min-w-[640px]">
-          <thead class="bg-parchmentDark font-mono text-xs uppercase tracking-wide text-charcoal/70">
-            <tr>
-              <th class="text-left px-4 py-3">Title</th>
-              <th class="text-left px-4 py-3">Author</th>
-              <th class="text-left px-4 py-3">Genre</th>
-              <th class="text-left px-4 py-3">Call #</th>
-              <th class="text-left px-4 py-3">Copies</th>
-              <th class="text-right px-4 py-3">Actions</th>
-            </tr>
-          </thead>
-          <tbody id="manageTableBody"></tbody>
-        </table>
-      </div>
-      <div id="managePagination" class="mt-5 flex flex-wrap items-center justify-center gap-2"></div>
-
-      <div class="grid lg:grid-cols-2 gap-6 mt-8">
-        <div class="border border-ink/10 rounded-lg bg-white/70 p-5">
-          <div class="flex items-center justify-between mb-4">
-            <h2 class="font-display text-xl text-ink">Pending student approvals</h2>
-            <span id="pendingCount" class="stamp stamp-new border-brass text-brass text-[10px]">0</span>
-          </div>
-          <div id="pendingUsersList" class="space-y-2"></div>
-        </div>
-
-        <div class="border border-ink/10 rounded-lg bg-white/70 p-5">
-          <div class="flex items-center justify-between mb-4">
-            <h2 class="font-display text-xl text-ink">Overdue / unreturned books</h2>
-            <span id="overdueCount" class="stamp stamp-out text-[10px]">0</span>
-          </div>
-          <div id="overdueList" class="space-y-2"></div>
-        </div>
-      </div>
-
-      <div class="border border-ink/10 rounded-lg bg-white/70 p-5 mt-6">
-        <h2 class="font-display text-xl text-ink mb-4">Pending reviews</h2>
-        <div id="pendingReviewsList" class="space-y-2"></div>
-      </div>
-
-      <div class="border border-ink/10 rounded-lg bg-white/70 p-5 mt-6">
-        <h2 class="font-display text-xl text-ink mb-4">Add a review manually</h2>
-        <div class="space-y-3">
-          <div>
-            <label class="block text-xs font-mono uppercase text-charcoal/60 mb-1">Book</label>
-            <select id="manualReviewBook" class="w-full border border-ink/15 rounded px-3 py-2 bg-white"></select>
-          </div>
-          <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 items-end">
-            <div>
-              <label class="block text-xs font-mono uppercase text-charcoal/60 mb-1">Rating</label>
-              <select id="manualReviewRating" class="w-full border border-ink/15 rounded px-3 py-2 bg-white">
-                <option value="5">★★★★★</option>
-                <option value="4">★★★★</option>
-                <option value="3">★★★</option>
-                <option value="2">★★</option>
-                <option value="1">★</option>
+              <select id="genreFilter"
+                class="border border-ink/15 rounded px-3 py-2.5 bg-white focus:outline-none focus:ring-2 focus:ring-brass">
+                <option value="">All genres</option>
+              </select>
+              <select id="departmentFilter"
+                class="border border-ink/15 rounded px-3 py-2.5 bg-white focus:outline-none focus:ring-2 focus:ring-brass">
+                <option value="">All departments</option>
+              </select>
+              <select id="sessionFilter"
+                class="border border-ink/15 rounded px-3 py-2.5 bg-white focus:outline-none focus:ring-2 focus:ring-brass">
+                <option value="">All sessions</option>
+              </select>
+              <select id="categoryFilter"
+                class="border border-ink/15 rounded px-3 py-2.5 bg-white focus:outline-none focus:ring-2 focus:ring-brass">
+                <option value="">Academic &amp; non-academic</option>
+                <option value="academic">Academic</option>
+                <option value="non-academic">Non-academic</option>
               </select>
             </div>
-            <button id="submitManualReviewBtn" class="bg-brass text-white font-medium px-4 py-2.5 rounded hover:bg-brass/90 transition sm:col-span-1 sm:w-auto w-full">
-              Publish review
-            </button>
           </div>
-          <div>
-            <label class="block text-xs font-mono uppercase text-charcoal/60 mb-1">Comment</label>
-            <textarea id="manualReviewComment" rows="2" class="w-full border border-ink/15 rounded px-3 py-2 bg-white"></textarea>
+
+          <div id="bookGrid" class="grid sm:grid-cols-2 lg:grid-cols-3 gap-6"></div>
+          <p id="bookEmpty" class="hidden text-center text-charcoal/50 font-mono text-sm py-12">No books match that search.</p>
+          <div id="browsePagination" class="mt-6 flex flex-wrap items-center justify-center gap-2"></div>
+        </section>
+
+        <!-- RECOMMENDATIONS VIEW -->
+        <section id="view-recommendations" class="view-panel hidden bg-white rounded-lg p-5 sm:p-8 border border-ink/10 shadow-md">
+          <div class="flex flex-col sm:flex-row sm:items-end justify-between gap-4 mb-6">
+            <div>
+              <p class="font-mono text-xs tracking-[0.2em] text-brass uppercase mb-1">Picked for you</p>
+              <h1 class="font-display text-3xl text-ink">Because you read…</h1>
+            </div>
+            <button id="editInterestsBtn"
+              class="text-sm font-mono border border-ink/20 rounded px-3 py-2 hover:bg-parchmentDark transition">Edit interests</button>
+          </div>
+          <div id="interestChips" class="flex flex-wrap gap-2 mb-6"></div>
+          <div id="recGrid" class="grid sm:grid-cols-2 lg:grid-cols-3 gap-6"></div>
+          <p id="recEmpty" class="hidden text-center text-charcoal/50 font-mono text-sm py-12">Add a few interests to get personalized picks.</p>
+        </section>
+
+        <!-- NOTIFICATIONS VIEW -->
+        <section id="view-notifications" class="view-panel hidden bg-white rounded-lg p-5 sm:p-8 border border-ink/10 shadow-md">
+          <p class="font-mono text-xs tracking-[0.2em] text-brass uppercase mb-1">Circulation Desk</p>
+          <h1 class="font-display text-3xl text-ink mb-6">Notifications</h1>
+
+          <div id="memberNotifWrap">
+            <div id="notifList" class="space-y-3 max-w-2xl"></div>
+            <p id="notifEmpty" class="hidden text-center text-charcoal/50 font-mono text-sm py-12">You're all caught up.</p>
+          </div>
+
+          <div id="adminNotifSection" class="hidden">
+            <div class="border border-ink/10 rounded-lg bg-white/70 p-4 mb-5 max-w-2xl">
+              <h2 id="adminNotifFormTitle" class="font-display text-lg text-ink mb-3">Send notification</h2>
+              <input type="hidden" id="adminNotifGroupId" />
+              <div class="space-y-3">
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div>
+                    <label class="block text-xs font-mono uppercase tracking-wide text-charcoal/60 mb-1">Target</label>
+                    <select id="adminNotifTarget"
+                      class="w-full border border-ink/15 rounded px-3 py-2 bg-white focus:outline-none focus:ring-2 focus:ring-brass">
+                      <option value="all_students">All students</option>
+                      <option value="all_users">All users</option>
+                      <option value="user">Specific user</option>
+                    </select>
+                  </div>
+                  <div id="adminNotifUserWrap" class="hidden">
+                    <label class="block text-xs font-mono uppercase tracking-wide text-charcoal/60 mb-1">User</label>
+                    <select id="adminNotifUser"
+                      class="w-full border border-ink/15 rounded px-3 py-2 bg-white focus:outline-none focus:ring-2 focus:ring-brass"></select>
+                  </div>
+                </div>
+                <div>
+                  <label class="block text-xs font-mono uppercase tracking-wide text-charcoal/60 mb-1">Title</label>
+                  <input id="adminNotifTitle" maxlength="120"
+                    class="w-full border border-ink/15 rounded px-3 py-2 bg-white focus:outline-none focus:ring-2 focus:ring-brass" />
+                </div>
+                <div>
+                  <label class="block text-xs font-mono uppercase tracking-wide text-charcoal/60 mb-1">Message</label>
+                  <textarea id="adminNotifBody" rows="3"
+                    class="w-full border border-ink/15 rounded px-3 py-2 bg-white focus:outline-none focus:ring-2 focus:ring-brass"></textarea>
+                </div>
+                <div class="flex flex-wrap gap-2 items-center">
+                  <button id="adminNotifSendBtn"
+                    class="bg-brass text-white font-medium px-4 py-2 rounded hover:bg-brass/90 transition">Send notification</button>
+                  <button id="adminNotifCancelEditBtn" type="button"
+                    class="hidden px-4 py-2 rounded border border-ink/20 hover:bg-parchmentDark transition">Cancel edit</button>
+                  <p id="adminNotifStatus" class="text-sm text-charcoal/60"></p>
+                </div>
+              </div>
+            </div>
+            <div id="adminNotifList" class="space-y-2 max-w-2xl"></div>
+          </div>
+        </section>
+
+        <!-- MANAGE VIEW -->
+        <section id="view-manage" class="view-panel hidden bg-white rounded-lg p-5 sm:p-8 border border-ink/10 shadow-md">
+          <div class="flex flex-col sm:flex-row sm:items-end justify-between gap-4 mb-6">
+            <div>
+              <p class="font-mono text-xs tracking-[0.2em] text-brass uppercase mb-1">Librarian Desk</p>
+              <h1 class="font-display text-3xl text-ink">Manage the collection</h1>
+            </div>
+            <div class="flex flex-wrap gap-2">
+              <button id="openAddBookBtn"
+                class="bg-brass text-white font-medium px-4 py-2.5 rounded hover:bg-brass/90 transition">+ Add a book</button>
+              <button id="openSettingsBtn"
+                class="bg-parchmentDark text-ink font-medium px-3 py-2.5 rounded hover:bg-parchment transition">Library Settings</button>
+            </div>
+          </div>
+
+          <div class="overflow-x-auto border border-ink/10 rounded-lg bg-white">
+            <table class="w-full text-sm border-collapse min-w-[640px]">
+              <thead class="bg-parchmentDark font-mono text-xs uppercase tracking-wide text-charcoal/70">
+                <tr>
+                  <th class="text-left px-4 py-3">Title</th>
+                  <th class="text-left px-4 py-3">Author</th>
+                  <th class="text-left px-4 py-3">Genre</th>
+                  <th class="text-left px-4 py-3">Call #</th>
+                  <th class="text-left px-4 py-3">Copies</th>
+                  <th class="text-right px-4 py-3">Actions</th>
+                </tr>
+              </thead>
+              <tbody id="manageTableBody"></tbody>
+            </table>
+          </div>
+          <div id="managePagination" class="mt-5 flex flex-wrap items-center justify-center gap-2"></div>
+
+          <div class="grid lg:grid-cols-2 gap-6 mt-8">
+            <div class="border border-ink/10 rounded-lg bg-white/70 p-5">
+              <div class="flex items-center justify-between mb-4">
+                <h2 class="font-display text-xl text-ink">Pending student approvals</h2>
+                <span id="pendingCount" class="stamp stamp-new border-brass text-brass text-[10px]">0</span>
+              </div>
+              <div id="pendingUsersList" class="space-y-2"></div>
+            </div>
+
+            <div class="border border-ink/10 rounded-lg bg-white/70 p-5">
+              <div class="flex items-center justify-between mb-4">
+                <h2 class="font-display text-xl text-ink">Overdue / unreturned books</h2>
+                <span id="overdueCount" class="stamp stamp-out text-[10px]">0</span>
+              </div>
+              <div id="overdueList" class="space-y-2"></div>
+            </div>
+          </div>
+
+          <div class="border border-ink/10 rounded-lg bg-white/70 p-5 mt-6">
+            <h2 class="font-display text-xl text-ink mb-4">Pending reviews</h2>
+            <div id="pendingReviewsList" class="space-y-2"></div>
+          </div>
+
+          <div class="border border-ink/10 rounded-lg bg-white/70 p-5 mt-6">
+            <h2 class="font-display text-xl text-ink mb-4">Add a review manually</h2>
+            <div class="space-y-3">
+              <div>
+                <label class="block text-xs font-mono uppercase text-charcoal/60 mb-1">Book</label>
+                <select id="manualReviewBook" class="w-full border border-ink/15 rounded px-3 py-2 bg-white"></select>
+              </div>
+              <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 items-end">
+                <div>
+                  <label class="block text-xs font-mono uppercase text-charcoal/60 mb-1">Rating</label>
+                  <select id="manualReviewRating" class="w-full border border-ink/15 rounded px-3 py-2 bg-white">
+                    <option value="5">★★★★★</option>
+                    <option value="4">★★★★</option>
+                    <option value="3">★★★</option>
+                    <option value="2">★★</option>
+                    <option value="1">★</option>
+                  </select>
+                </div>
+                <button id="submitManualReviewBtn"
+                  class="bg-brass text-white font-medium px-4 py-2.5 rounded hover:bg-brass/90 transition sm:col-span-1 sm:w-auto w-full">
+                  Publish review
+                </button>
+              </div>
+              <div>
+                <label class="block text-xs font-mono uppercase text-charcoal/60 mb-1">Comment</label>
+                <textarea id="manualReviewComment" rows="2"
+                  class="w-full border border-ink/15 rounded px-3 py-2 bg-white"></textarea>
+              </div>
+            </div>
+          </div>
+
+          <div class="border border-ink/10 rounded-lg bg-white/70 p-5 mt-6 overflow-x-auto">
+            <h2 class="font-display text-xl text-ink mb-4">Students</h2>
+            <table class="w-full text-sm border-collapse min-w-[560px]">
+              <thead class="bg-parchmentDark font-mono text-xs uppercase tracking-wide text-charcoal/70">
+                <tr>
+                  <th class="text-left px-4 py-3">Name</th>
+                  <th class="text-left px-4 py-3">Email</th>
+                  <th class="text-left px-4 py-3">Card #</th>
+                  <th class="text-left px-4 py-3">Dept · Session</th>
+                  <th class="text-left px-4 py-3">Status</th>
+                  <th class="text-right px-4 py-3">Actions</th>
+                </tr>
+              </thead>
+              <tbody id="studentsTableBody"></tbody>
+            </table>
+          </div>
+          <div id="studentsPagination" class="mt-5 flex flex-wrap items-center justify-center gap-2"></div>
+
+          <div class="hidden border border-ink/10 rounded-lg bg-white/70 p-5 mt-6 overflow-x-auto">
+            <h2 class="font-display text-xl text-ink mb-4">Teachers</h2>
+            <table class="w-full text-sm border-collapse min-w-[560px]">
+              <thead class="bg-parchmentDark font-mono text-xs uppercase tracking-wide text-charcoal/70">
+                <tr>
+                  <th class="text-left px-4 py-3">Name</th>
+                  <th class="text-left px-4 py-3">Email</th>
+                  <th class="text-left px-4 py-3">Card #</th>
+                  <th class="text-left px-4 py-3">Dept · Session</th>
+                  <th class="text-left px-4 py-3">Status</th>
+                  <th class="text-right px-4 py-3">Actions</th>
+                </tr>
+              </thead>
+              <tbody id="teachersTableBody"></tbody>
+            </table>
+          </div>
+          <div id="teachersPagination" class="mt-5 flex flex-wrap items-center justify-center gap-2"></div>
+        </section>
+      </main>
+
+      <footer class="bg-ink text-parchment border-t border-ink/20 mt-auto max-w-[1240px] mx-auto px-4 rounded-t-lg">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 py-6">
+          <div class="grid grid-cols-1 md:grid-cols-3 gap-8 mb-4">
+            <div>
+              <h3 class="font-bold text-sm mb-2">KiU Library</h3>
+              <p class="text-xs opacity-75">Providing access to knowledge and information resources for all members.</p>
+            </div>
+            <div>
+              <h3 class="font-bold text-sm mb-2">Quick Links</h3>
+              <ul class="text-xs space-y-1 opacity-75">
+                <li><a href="index.html" class="hover:underline">Home</a></li>
+                <li><a href="#" class="hover:underline">Catalog</a></li>
+                <li><a href="#" class="hover:underline">Contact</a></li>
+              </ul>
+            </div>
+            <div>
+              <h3 class="font-bold text-sm mb-2">Support</h3>
+              <p class="text-xs opacity-75">Hours: 9:00 AM - 5:00 PM<br>Email: registrar@kiu.ac.bd<br>Phone: 02-9988 32221</p>
+            </div>
+          </div>
+          <div class="border-t border-parchment/20 pt-4 text-xs opacity-60 text-center">
+            <p>© 2026 Kishoreganj University Library. All rights reserved.</p>
           </div>
         </div>
-      </div>
-
-      <div class="border border-ink/10 rounded-lg bg-white/70 p-5 mt-6 overflow-x-auto">
-        <h2 class="font-display text-xl text-ink mb-4">Students</h2>
-        <table class="w-full text-sm border-collapse min-w-[560px]">
-          <thead class="bg-parchmentDark font-mono text-xs uppercase tracking-wide text-charcoal/70">
-            <tr>
-              <th class="text-left px-4 py-3">Name</th>
-              <th class="text-left px-4 py-3">Email</th>
-              <th class="text-left px-4 py-3">Card #</th>
-              <th class="text-left px-4 py-3">Dept · Session</th>
-              <th class="text-left px-4 py-3">Status</th>
-              <th class="text-right px-4 py-3">Actions</th>
-            </tr>
-          </thead>
-          <tbody id="studentsTableBody"></tbody>
-        </table>
-      </div>
-      <div id="studentsPagination" class="mt-5 flex flex-wrap items-center justify-center gap-2"></div>
+      </footer>
     </div>
+  </div>
 
-    <div class="border border-ink/10 rounded-lg bg-white/70 p-5 mt-6 overflow-x-auto">
-      <h2 class="font-display text-xl text-ink mb-4">Teachers</h2>
-      <table class="w-full text-sm border-collapse min-w-[560px]">
-          <thead class="bg-parchmentDark font-mono text-xs uppercase tracking-wide text-charcoal/70">
-            <tr>
-              <th class="text-left px-4 py-3">Name</th>
-              <th class="text-left px-4 py-3">Email</th>
-              <th class="text-left px-4 py-3">Card #</th>
-              <th class="text-left px-4 py-3">Dept · Session</th>
-              <th class="text-left px-4 py-3">Status</th>
-              <th class="text-right px-4 py-3">Actions</th>
-            </tr>
-          </thead>
-          <tbody id="teachersTableBody"></tbody>
-        </table>
-      </div>
-      <div id="teachersPagination" class="mt-5 flex flex-wrap items-center justify-center gap-2"></div>
-    </div>
-
-    <!-- <div class="border border-ink/10 rounded-lg bg-white/70 p-5 mt-6">
-      <h2 class="font-display text-xl text-ink mb-4">Create notification</h2>
-        <div class="space-y-3">
-          <div>
-            <label class="block text-xs font-mono uppercase text-charcoal/60 mb-1">Target</label>
-            <select id="notifTargetSelect" class="w-full border border-ink/15 rounded px-3 py-2 bg-white">
-              <option value="all_students">All students</option>
-              <option value="all_users">All users</option>
-              <option value="user">Specific user</option>
-            </select>
-          </div>
-          <div id="notifUserSelectWrap" class="hidden">
-            <label class="block text-xs font-mono uppercase text-charcoal/60 mb-1">User</label>
-            <select id="notifUserSelect" class="w-full border border-ink/15 rounded px-3 py-2 bg-white"></select>
-          </div>
-          <div>
-            <label class="block text-xs font-mono uppercase text-charcoal/60 mb-1">Title</label>
-            <input id="notifTitleInput" class="w-full border border-ink/15 rounded px-3 py-2 bg-white" maxlength="120" />
-          </div>
-          <div>
-            <label class="block text-xs font-mono uppercase text-charcoal/60 mb-1">Message</label>
-            <textarea id="notifBodyInput" rows="3" class="w-full border border-ink/15 rounded px-3 py-2 bg-white"></textarea>
-          </div>
-          <div class="flex flex-col sm:flex-row sm:items-center gap-3">
-            <button id="sendAdminNotificationBtn" class="bg-ink text-parchment font-medium px-4 py-2.5 rounded hover:bg-ink/90 transition">Send notification</button>
-            <p id="adminNotifStatus" class="text-sm text-charcoal/60"></p>
-          </div>
-        </div>
-      </div> -->
-    </section>
-  </main>
-
-  <footer class="bg-ink text-parchment border-t border-ink/20 mt-12">
-    <div class="max-w-7xl mx-auto px-4 sm:px-6 py-6">
-      <div class="grid grid-cols-1 md:grid-cols-3 gap-8 mb-4">
-        <div>
-          <h3 class="font-bold text-sm mb-2">KiU Library</h3>
-          <p class="text-xs opacity-75">Providing access to knowledge and information resources for all members.</p>
-        </div>
-        <div>
-          <h3 class="font-bold text-sm mb-2">Quick Links</h3>
-          <ul class="text-xs space-y-1 opacity-75">
-            <li><a href="index.html" class="hover:underline">Home</a></li>
-            <li><a href="#" class="hover:underline">Catalog</a></li>
-            <li><a href="#" class="hover:underline">Contact</a></li>
-          </ul>
-        </div>
-        <div>
-          <h3 class="font-bold text-sm mb-2">Support</h3>
-          <p class="text-xs opacity-75">Hours: 9:00 AM - 5:00 PM<br>Email: registrar@kiu.ac.bd<br>Phone: 02-9988 32221</p>
-        </div>
-      </div>
-      <div class="border-t border-parchment/20 pt-4 text-xs opacity-60 text-center">
-        <p>© 2026 Kishoreganj University Library. All rights reserved.</p>
-      </div>
-    </div>
-  </footer>
+  <!-- MODALS -->
 
   <div id="fineModal" class="hidden fixed inset-0 bg-ink/40 backdrop-blur-sm z-50 flex items-center justify-center p-4">
     <div class="bg-parchment border border-ink/15 rounded-lg w-full max-w-sm p-6 shadow-2xl">
@@ -345,15 +367,18 @@
       <input type="hidden" id="fineUserId" />
       <div>
         <label class="block text-xs font-mono uppercase text-charcoal/60 mb-1">Amount</label>
-        <input id="fineAmount" type="number" step="0.01" class="w-full border border-ink/15 rounded px-3 py-2 bg-white" />
+        <input id="fineAmount" type="number" step="0.01"
+          class="w-full border border-ink/15 rounded px-3 py-2 bg-white" />
       </div>
       <div class="mt-3">
         <label class="block text-xs font-mono uppercase text-charcoal/60 mb-1">Reason</label>
         <input id="fineReason" class="w-full border border-ink/15 rounded px-3 py-2 bg-white" />
       </div>
       <div class="flex gap-2 pt-4">
-        <button id="saveFineBtn" type="button" class="flex-1 bg-ink text-parchment font-medium py-2.5 rounded hover:bg-ink/90 transition">Charge</button>
-        <button id="cancelFineBtn" type="button" class="px-4 py-2.5 rounded border border-ink/15 hover:bg-parchmentDark transition">Cancel</button>
+        <button id="saveFineBtn" type="button"
+          class="flex-1 bg-ink text-parchment font-medium py-2.5 rounded hover:bg-ink/90 transition">Charge</button>
+        <button id="cancelFineBtn" type="button"
+          class="px-4 py-2.5 rounded border border-ink/15 hover:bg-parchmentDark transition">Cancel</button>
       </div>
     </div>
   </div>
@@ -368,53 +393,63 @@
         <input type="hidden" id="bookId" />
         <div>
           <label class="block text-xs font-mono uppercase tracking-wide text-charcoal/60 mb-1">Title</label>
-          <input id="bookTitle" required class="w-full border border-ink/15 rounded px-3 py-2 bg-white focus:outline-none focus:ring-2 focus:ring-brass" />
+          <input id="bookTitle" required
+            class="w-full border border-ink/15 rounded px-3 py-2 bg-white focus:outline-none focus:ring-2 focus:ring-brass" />
         </div>
         <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
           <div>
             <label class="block text-xs font-mono uppercase tracking-wide text-charcoal/60 mb-1">Author</label>
-            <input id="bookAuthor" required class="w-full border border-ink/15 rounded px-3 py-2 bg-white focus:outline-none focus:ring-2 focus:ring-brass" />
+            <input id="bookAuthor" required
+              class="w-full border border-ink/15 rounded px-3 py-2 bg-white focus:outline-none focus:ring-2 focus:ring-brass" />
           </div>
           <div>
             <label class="block text-xs font-mono uppercase tracking-wide text-charcoal/60 mb-1">ISBN</label>
-            <input id="bookIsbn" required class="w-full border border-ink/15 rounded px-3 py-2 bg-white focus:outline-none focus:ring-2 focus:ring-brass" />
+            <input id="bookIsbn" required
+              class="w-full border border-ink/15 rounded px-3 py-2 bg-white focus:outline-none focus:ring-2 focus:ring-brass" />
           </div>
         </div>
         <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
           <div>
             <label class="block text-xs font-mono uppercase tracking-wide text-charcoal/60 mb-1">Genre</label>
-            <input id="bookGenre" required list="genreList" class="w-full border border-ink/15 rounded px-3 py-2 bg-white focus:outline-none focus:ring-2 focus:ring-brass" />
+            <input id="bookGenre" required list="genreList"
+              class="w-full border border-ink/15 rounded px-3 py-2 bg-white focus:outline-none focus:ring-2 focus:ring-brass" />
             <datalist id="genreList"></datalist>
           </div>
           <div>
             <label class="block text-xs font-mono uppercase tracking-wide text-charcoal/60 mb-1">Call number</label>
-            <input id="bookCallNumber" class="w-full border border-ink/15 rounded px-3 py-2 bg-white focus:outline-none focus:ring-2 focus:ring-brass" />
+            <input id="bookCallNumber"
+              class="w-full border border-ink/15 rounded px-3 py-2 bg-white focus:outline-none focus:ring-2 focus:ring-brass" />
           </div>
         </div>
         <div>
           <label class="block text-xs font-mono uppercase tracking-wide text-charcoal/60 mb-1">Copies</label>
-          <input id="bookCopies" type="number" min="1" value="1" required class="w-full border border-ink/15 rounded px-3 py-2 bg-white focus:outline-none focus:ring-2 focus:ring-brass" />
+          <input id="bookCopies" type="number" min="1" value="1" required
+            class="w-full border border-ink/15 rounded px-3 py-2 bg-white focus:outline-none focus:ring-2 focus:ring-brass" />
         </div>
         <div>
           <label class="block text-xs font-mono uppercase tracking-wide text-charcoal/60 mb-1">Type</label>
-          <select id="bookCategory" class="w-full border border-ink/15 rounded px-3 py-2 bg-white focus:outline-none focus:ring-2 focus:ring-brass">
+          <select id="bookCategory"
+            class="w-full border border-ink/15 rounded px-3 py-2 bg-white focus:outline-none focus:ring-2 focus:ring-brass">
             <option value="non-academic">Non-academic</option>
             <option value="academic">Academic</option>
           </select>
         </div>
         <div>
           <label class="block text-xs font-mono uppercase tracking-wide text-charcoal/60 mb-1">Description</label>
-          <textarea id="bookDescription" rows="3" class="w-full border border-ink/15 rounded px-3 py-2 bg-white focus:outline-none focus:ring-2 focus:ring-brass"></textarea>
+          <textarea id="bookDescription" rows="3"
+            class="w-full border border-ink/15 rounded px-3 py-2 bg-white focus:outline-none focus:ring-2 focus:ring-brass"></textarea>
         </div>
         <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
           <div>
             <label class="block text-xs font-mono uppercase tracking-wide text-charcoal/60 mb-1">Department</label>
-            <input id="bookDepartment" list="bookDeptList" class="w-full border border-ink/15 rounded px-3 py-2 bg-white focus:outline-none focus:ring-2 focus:ring-brass" />
+            <input id="bookDepartment" list="bookDeptList"
+              class="w-full border border-ink/15 rounded px-3 py-2 bg-white focus:outline-none focus:ring-2 focus:ring-brass" />
             <datalist id="bookDeptList"></datalist>
           </div>
           <div>
             <label class="block text-xs font-mono uppercase tracking-wide text-charcoal/60 mb-1">Session</label>
-            <input id="bookSession" list="bookSessionList" class="w-full border border-ink/15 rounded px-3 py-2 bg-white focus:outline-none focus:ring-2 focus:ring-brass" />
+            <input id="bookSession" list="bookSessionList"
+              class="w-full border border-ink/15 rounded px-3 py-2 bg-white focus:outline-none focus:ring-2 focus:ring-brass" />
             <datalist id="bookSessionList"></datalist>
           </div>
         </div>
@@ -426,14 +461,17 @@
         </div>
         <p id="bookFormError" class="text-rust text-sm hidden"></p>
         <div class="flex gap-2 pt-2">
-          <button type="submit" class="flex-1 bg-ink text-parchment font-medium py-2.5 rounded hover:bg-ink/90 transition">Save book</button>
-          <button type="button" id="cancelBookModal" class="px-4 py-2.5 rounded border border-ink/15 hover:bg-parchmentDark transition">Cancel</button>
+          <button type="submit"
+            class="flex-1 bg-ink text-parchment font-medium py-2.5 rounded hover:bg-ink/90 transition">Save book</button>
+          <button type="button" id="cancelBookModal"
+            class="px-4 py-2.5 rounded border border-ink/15 hover:bg-parchmentDark transition">Cancel</button>
         </div>
       </form>
     </div>
   </div>
 
-  <div id="bookDetailModal" class="hidden fixed inset-0 bg-ink/40 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+  <div id="bookDetailModal"
+    class="hidden fixed inset-0 bg-ink/40 backdrop-blur-sm z-50 flex items-center justify-center p-4">
     <div class="bg-parchment border border-ink/15 rounded-lg w-full max-w-2xl p-6 shadow-2xl">
       <div class="flex flex-col sm:flex-row items-start gap-4">
         <img id="detailCover" src="" alt="cover" class="w-28 h-40 object-cover rounded shadow-sm" />
@@ -467,7 +505,8 @@
               </div>
               <textarea id="reviewComment" rows="2" required placeholder="Share your thoughts about this book…"
                 class="w-full border border-ink/15 rounded px-3 py-2 bg-white text-sm"></textarea>
-              <button type="submit" class="bg-brass text-white text-sm font-medium px-3 py-1.5 rounded hover:bg-brass/90 transition">Submit review</button>
+              <button type="submit"
+                class="bg-brass text-white text-sm font-medium px-3 py-1.5 rounded hover:bg-brass/90 transition">Submit review</button>
               <p class="text-xs font-mono text-charcoal/50">Reviews appear publicly after an administrator approves them.</p>
             </form>
           </div>
@@ -476,7 +515,8 @@
     </div>
   </div>
 
-  <div id="settingsModal" class="hidden fixed inset-0 bg-ink/40 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+  <div id="settingsModal"
+    class="hidden fixed inset-0 bg-ink/40 backdrop-blur-sm z-50 flex items-center justify-center p-4">
     <div class="bg-parchment border border-ink/15 rounded-lg w-full max-w-md p-6 shadow-2xl">
       <div class="flex items-center justify-between mb-4">
         <h2 class="font-display text-xl text-ink">Library Settings</h2>
@@ -485,25 +525,31 @@
       <div class="space-y-3">
         <div>
           <label class="block text-xs font-mono uppercase text-charcoal/60 mb-1">Fine per day (currency)</label>
-          <input id="settingFine" type="number" min="0" step="0.01" class="w-full border border-ink/15 rounded px-3 py-2 bg-white" />
+          <input id="settingFine" type="number" min="0" step="0.01"
+            class="w-full border border-ink/15 rounded px-3 py-2 bg-white" />
         </div>
         <div>
           <label class="block text-xs font-mono uppercase text-charcoal/60 mb-1">Default late-return fine</label>
-          <input id="settingLateDefaultFine" type="number" min="0" step="0.01" class="w-full border border-ink/15 rounded px-3 py-2 bg-white" />
+          <input id="settingLateDefaultFine" type="number" min="0" step="0.01"
+            class="w-full border border-ink/15 rounded px-3 py-2 bg-white" />
         </div>
         <div>
           <label class="block text-xs font-mono uppercase text-charcoal/60 mb-1">Grace period (days)</label>
-          <input id="settingGrace" type="number" min="0" class="w-full border border-ink/15 rounded px-3 py-2 bg-white" />
+          <input id="settingGrace" type="number" min="0"
+            class="w-full border border-ink/15 rounded px-3 py-2 bg-white" />
         </div>
         <div class="flex gap-2 pt-2">
-          <button id="saveSettingsBtn" class="flex-1 bg-ink text-parchment font-medium py-2.5 rounded hover:bg-ink/90 transition">Save</button>
-          <button id="cancelSettingsBtn" class="px-4 py-2.5 rounded border border-ink/15 hover:bg-parchmentDark transition">Cancel</button>
+          <button id="saveSettingsBtn"
+            class="flex-1 bg-ink text-parchment font-medium py-2.5 rounded hover:bg-ink/90 transition">Save</button>
+          <button id="cancelSettingsBtn"
+            class="px-4 py-2.5 rounded border border-ink/15 hover:bg-parchmentDark transition">Cancel</button>
         </div>
       </div>
     </div>
   </div>
 
-  <div id="interestsModal" class="hidden fixed inset-0 bg-ink/40 backdrop-blur-sm z-40 flex items-center justify-center p-4">
+  <div id="interestsModal"
+    class="hidden fixed inset-0 bg-ink/40 backdrop-blur-sm z-40 flex items-center justify-center p-4">
     <div class="bg-parchment border border-ink/15 rounded-lg w-full max-w-md p-6 shadow-2xl">
       <div class="flex items-center justify-between mb-4">
         <h2 class="font-display text-xl text-ink">Your interests</h2>
@@ -511,12 +557,15 @@
       </div>
       <p class="text-sm text-charcoal/60 mb-4">Pick a few genres — we'll recommend books and notify you about new arrivals.</p>
       <div id="interestOptions" class="flex flex-wrap gap-2 mb-5"></div>
-      <button id="saveInterestsBtn" class="w-full bg-brass text-white font-medium py-2.5 rounded hover:bg-brass/90 transition">Save interests</button>
+      <button id="saveInterestsBtn"
+        class="w-full bg-brass text-white font-medium py-2.5 rounded hover:bg-brass/90 transition">Save interests</button>
     </div>
   </div>
 
-  <div id="profileModal" class="hidden fixed inset-0 bg-ink/40 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-    <div class="bg-parchment border border-ink/15 rounded-lg w-full max-w-md p-6 shadow-2xl max-h-[90vh] overflow-y-auto">
+  <div id="profileModal"
+    class="hidden fixed inset-0 bg-ink/40 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+    <div
+      class="bg-parchment border border-ink/15 rounded-lg w-full max-w-md p-6 shadow-2xl max-h-[90vh] overflow-y-auto">
       <div class="flex items-center justify-between mb-4">
         <h2 class="font-display text-xl text-ink">Your profile</h2>
         <button id="closeProfileModal" type="button" class="text-charcoal/50 hover:text-charcoal">✕</button>
@@ -524,7 +573,8 @@
       <form id="profileForm" class="space-y-3">
         <div>
           <label class="block text-xs font-mono uppercase text-charcoal/60 mb-1">Full name</label>
-          <input id="profName" required class="w-full border border-ink/15 rounded px-3 py-2 bg-white focus:outline-none focus:ring-2 focus:ring-brass" />
+          <input id="profName" required
+            class="w-full border border-ink/15 rounded px-3 py-2 bg-white focus:outline-none focus:ring-2 focus:ring-brass" />
         </div>
         <p class="text-xs font-mono text-charcoal/50">Signed in as <span id="profEmail" class="font-medium"></span> · email cannot be changed.</p>
         <p id="profCardInfo" class="text-xs font-mono text-brass hidden"></p>
@@ -537,7 +587,8 @@
           </div>
           <div id="profSessionWrap">
             <label class="block text-xs font-mono uppercase text-charcoal/60 mb-1">Session</label>
-            <input id="profSession" list="profSessionList" class="w-full border border-ink/15 rounded px-3 py-2 bg-white" />
+            <input id="profSession" list="profSessionList"
+              class="w-full border border-ink/15 rounded px-3 py-2 bg-white" />
             <datalist id="profSessionList"></datalist>
           </div>
         </div>
@@ -564,41 +615,89 @@
         </details>
         <p id="profileFormError" class="text-rust text-sm hidden"></p>
         <div class="flex gap-2 pt-2">
-          <button type="submit" class="flex-1 bg-ink text-parchment font-medium py-2.5 rounded hover:bg-ink/90 transition">Save changes</button>
-          <button type="button" id="cancelProfileModal" class="px-4 py-2.5 rounded border border-ink/15 hover:bg-parchmentDark transition">Cancel</button>
+          <button type="submit"
+            class="flex-1 bg-ink text-parchment font-medium py-2.5 rounded hover:bg-ink/90 transition">Save changes</button>
+          <button type="button" id="cancelProfileModal"
+            class="px-4 py-2.5 rounded border border-ink/15 hover:bg-parchmentDark transition">Cancel</button>
         </div>
       </form>
     </div>
   </div>
 
-  <div id="toast" class="hidden fixed bottom-6 left-1/2 -translate-x-1/2 bg-ink text-parchment font-mono text-sm px-4 py-2.5 rounded shadow-lg z-50"></div>
+  <div id="toast"
+    class="hidden fixed bottom-6 left-1/2 -translate-x-1/2 bg-ink text-parchment font-mono text-sm px-4 py-2.5 rounded shadow-lg z-50">
+  </div>
 
-<script src="js/config.js"></script>
-<script src="js/mock.js"></script>
-<script>
-  if (!window.LIB_CONFIG) {
-    console.warn('LIB_CONFIG not found — applying fallback configuration (demo mode).');
-    window.LIB_CONFIG = {
-      API_BASE: '',
-      DEMO_MODE_FALLBACK: true,
-      ENDPOINTS: {
-        register: "/auth/register",
-        login: "/auth/login",
-        me: "/auth/me",
-        books: "/books",
-        book: (id) => `/books/${id}`,
-        borrow: (id) => `/books/${id}/borrow`,
-        returnBook: (id) => `/books/${id}/return`,
-        recommendations: "/recommendations",
-        interests: "/users/interests",
-        notifications: "/notifications",
-        notificationRead: (id) => `/notifications/${id}/read`,
-      },
-    };
-  }
-</script>
-<script src="js/api.js"></script>
-<script src="js/auth.js"></script>
-<script src="js/dashboard.js"></script>
+  <script src="js/config.js"></script>
+  <script src="js/mock.js"></script>
+  <script>
+    if (!window.LIB_CONFIG) {
+      console.warn('LIB_CONFIG not found — applying fallback configuration (demo mode).');
+      window.LIB_CONFIG = {
+        API_BASE: '',
+        DEMO_MODE_FALLBACK: true,
+        ENDPOINTS: {
+          register: "/auth/register",
+          login: "/auth/login",
+          me: "/auth/me",
+          books: "/books",
+          book: (id) => `/books/${id}`,
+          borrow: (id) => `/books/${id}/borrow`,
+          returnBook: (id) => `/books/${id}/return`,
+          recommendations: "/recommendations",
+          interests: "/users/interests",
+          notifications: "/notifications",
+          notificationRead: (id) => `/notifications/${id}/read`,
+        },
+      };
+    }
+  </script>
+  <script src="js/api.js"></script>
+  <script src="js/auth.js"></script>
+  <script src="js/dashboard.js"></script>
+  <script>
+    function closeMobileSidebar() {
+      const sidebar = document.getElementById('sidebar');
+      const overlay = document.getElementById('sidebarOverlay');
+      sidebar.classList.add('-translate-x-full');
+      overlay.classList.add('hidden');
+    }
+
+    function openMobileSidebar() {
+      const sidebar = document.getElementById('sidebar');
+      const overlay = document.getElementById('sidebarOverlay');
+      sidebar.classList.remove('-translate-x-full');
+      overlay.classList.remove('hidden');
+    }
+
+    // Toggle Mobile Sidebar
+    document.getElementById('sidebarToggle')?.addEventListener('click', function (e) {
+      e.stopPropagation();
+      openMobileSidebar();
+    });
+
+    // Close Mobile Sidebar Button
+    document.getElementById('sidebarClose')?.addEventListener('click', closeMobileSidebar);
+
+    // Overlay click close
+    document.getElementById('sidebarOverlay')?.addEventListener('click', closeMobileSidebar);
+
+    // Auto-close overlay when navigating on mobile screens
+    document.querySelectorAll('#sidebar .nav-btn').forEach(function (btn) {
+      btn.addEventListener('click', function () {
+        if (window.innerWidth < 640) {
+          closeMobileSidebar();
+        }
+      });
+    });
+
+    // Reset layout on window resize
+    window.addEventListener('resize', function () {
+      if (window.innerWidth >= 640) {
+        closeMobileSidebar();
+      }
+    });
+  </script>
 </body>
+
 </html>
