@@ -208,6 +208,22 @@
 	</style>
 	<meta name="viewport" content="width=device-width, initial-scale=1.0" />
 	<script src="https://cdn.tailwindcss.com"></script>
+	<script>
+  tailwind.config = {
+    theme: {
+      extend: {
+        colors: {
+          ink: '#000000', parchment: '#F3EDE1', parchmentDark: '#E8DFCC',
+          brass: '#B8894A', sage: '#6B7F6E', rust: '#A8442E', charcoal: '#2E2B28',
+        },
+        fontFamily: {
+          display: ['Fraunces', 'serif'],
+          mono: ['IBM Plex Mono', 'monospace'],
+        },
+      },
+    },
+  };
+</script>
 	<link rel="stylesheet" href="css/styles.css" />
 </head>
 
@@ -215,8 +231,9 @@
 	<!-- Header & Navigation -->
 	<header class="bg-white border-b border-ink/10 shadow-sm sticky top-0 z-50">
 		<div class="max-w-7xl mx-auto px-4 sm:px-6 py-4">
-			<div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+			<div id="headerContent" class="flex flex-col gap-3 sm:flex-row items-center justify-between">
 				<div class="flex items-center gap-3 sm:gap-4 min-w-0">
+					<img src="kiu_logo.png" alt="KiU Library Logo" class="h-10 w-10 sm:h-12 sm:w-12 object-contain" />
 					<h1 class="font-display text-2xl sm:text-3xl font-bold text-ink whitespace-nowrap">KiU Library</h1>
 					<p class="hidden md:block text-xs text-charcoal/60 font-mono truncate">Knowledge · Information ·
 						Understanding</p>
@@ -234,7 +251,8 @@
 				</nav>
 				<nav id="userNav" class="hidden flex flex-wrap items-center gap-3 sm:gap-6 text-sm">
 					<a href="dashboard.html"
-						class="text-ink hover:text-brass transition md:hover:bg-blue-300 md:py-1 md:px-2 rounded-md ">Dashboard</a>
+						class="text-[10px] font-mono w-15 border border-ink/20 rounded px-2 py-1 hover:bg-parchmentDark transition">Dashboard</a>
+						<!-- class="text-ink hover:text-brass transition md:hover:bg-blue-300 md:py-1 md:px-2 rounded-md ">Dashboard</a> -->
 				</nav>
 			</div>
 		</div>
@@ -478,13 +496,16 @@
 	<script>
 		const UserNav = document.getElementById("userNav");
 		const GuestNav = document.getElementById("guestNav");
+		const headerContent = document.getElementById("headerContent");
 		const token = localStorage.getItem('lib_token');
 		if (token) {
 			GuestNav.classList.add("hidden");
 			UserNav.classList.remove("hidden");
+			headerContent.classList.remove("flex-col");
 		} else {
 			GuestNav.classList.remove("hidden");
 			UserNav.classList.add("hidden");
+			headerContent.classList.add("flex-col");
 		}
 	</script>
 	<script>
