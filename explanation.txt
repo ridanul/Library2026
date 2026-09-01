@@ -147,11 +147,11 @@ All tables are defined in Backend/app/models.py as SQLAlchemy ORM classes.
 3. JAVASCRIPT FUNCTIONS — WHAT EACH ONE DOES
 -------------------------------------------------------------------------------
 
---- js/config.js ---------------------------------------------------------
+--- frontend/js/config.js ------------------------------------------------
 No functions — just a plain object `window.LIB_CONFIG` holding the API
 base URL and a map of endpoint paths/builders used by api.js.
 
---- js/auth.js  (the `Auth` object) --------------------------------------
+--- frontend/js/auth.js  (the `Auth` object) -----------------------------
   Auth.getUser()
       Reads and JSON-parses the cached user object from
       localStorage["lib_user"]. Returns null if missing/corrupt.
@@ -180,7 +180,7 @@ base URL and a map of endpoint paths/builders used by api.js.
       valid, or a human-readable error message describing the first rule
       that failed (length, uppercase, lowercase, special character).
 
---- js/api.js  (the `Api` object) ----------------------------------------
+--- frontend/js/api.js  (the `Api` object) -------------------------------
   authHeaders()
       Builds an `Authorization: Bearer <token>` header object from the
       token in localStorage (or {} if not logged in).
@@ -252,7 +252,7 @@ base URL and a map of endpoint paths/builders used by api.js.
       Admin CRUD over previously sent broadcast notifications (grouped by
       broadcast_id).
 
---- js/dashboard.js -------------------------------------------------------
+--- frontend/js/dashboard.js ---------------------------------------------
 This is the main dashboard controller, split by feature area:
 
   General / navigation

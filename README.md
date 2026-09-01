@@ -21,11 +21,12 @@ library-app/
   Backend/           FastAPI API
     app/             Application code (main, auth, models, schemas, seed)
     .env.example     Email + JWT configuration template
-  css/               Frontend styles
-  js/                Frontend JavaScript (config, api, auth, dashboard)
-  index.html         Landing page
-  login.html         Login/Register with OTP verification
-  dashboard.html     Main application dashboard
+  frontend/          Frontend files
+    css/             Frontend styles
+    js/              Frontend JavaScript (config, api, auth, dashboard)
+    index.html       Landing page
+    login.html       Login/Register with OTP verification
+    dashboard.html   Main application dashboard
   Procfile           Heroku deployment
   runtime.txt        Python runtime version
   requirements.txt   Python dependencies
@@ -60,7 +61,7 @@ cd Backend
 uvicorn app.main:app --reload
 ```
 
-Open **http://localhost:8000** — the backend automatically serves the frontend from the repository root. The API lives under `http://localhost:8000/api/...`, and interactive docs are at **http://localhost:8000/docs**.
+Open **http://localhost:8000** — the backend automatically serves the frontend from `frontend/`. The API lives under `http://localhost:8000/api/...`, and interactive docs are at **http://localhost:8000/docs**.
 
 ### Demo Accounts
 
@@ -75,7 +76,7 @@ Delete `library.db` any time to reset to the seed data.
 
 ### Running Frontend and Backend Separately
 
-If you'd rather serve the frontend from somewhere else (e.g. `file://` or a different dev server), that works too — CORS is wide open. Just point `js/config.js` → `API_BASE` at wherever the backend ends up (e.g. `http://localhost:8000/api`).
+If you'd rather serve the frontend from somewhere else (e.g. `file://` or a different dev server), that works too — CORS is wide open. Just point `frontend/js/config.js` → `API_BASE` at wherever the backend ends up (e.g. `http://localhost:8000/api`).
 
 ## Email Verification
 
@@ -181,7 +182,7 @@ git push heroku main
 | `SMTP_USER` | SMTP username | No |
 | `SMTP_PASS` | SMTP password | No |
 | `SMTP_FROM` | From email address | No |
-| `FRONTEND_DIR` | Path to frontend files (defaults to repo root) | No |
+| `FRONTEND_DIR` | Path to frontend files (defaults to `frontend/`) | No |
 
 \* At least one email provider (Brevo API or SMTP) is required for email verification.
 

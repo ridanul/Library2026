@@ -946,11 +946,10 @@ async def upload_cover(file: UploadFile = File(...), admin: models.User = Depend
 
 # ===========================================================================
 # Optionally serve static frontend assets/pages from the same process.
-# By default this points at the repository root where index/login/dashboard
-# plus css/js live in this project structure.
+# By default this points at the dedicated "frontend/" folder in repo root.
 # ===========================================================================
 _repo_root = Path(__file__).resolve().parents[2]
-_frontend_dir = Path(os.getenv("FRONTEND_DIR", str(_repo_root))).resolve()
+_frontend_dir = Path(os.getenv("FRONTEND_DIR", str(_repo_root / "frontend"))).resolve()
 
 
 def _frontend_file(name: str) -> Path:

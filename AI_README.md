@@ -3,7 +3,7 @@
 PROJECT: KiU Library Manager
 TYPE: monolith, FastAPI backend serves static frontend from same process
 STACK: Python3.10+/FastAPI/SQLAlchemy/SQLite(default)/JWT(HS256,jose)/bcrypt(passlib) + vanilla-JS/HTML/Tailwind(CDN)
-ENTRYPOINT: `Backend/app/main.py` (uvicorn app.main:app), mounts repo-root as static frontend, API under `/api`
+ENTRYPOINT: `Backend/app/main.py` (uvicorn app.main:app), mounts `frontend/` as static frontend, API under `/api`
 DEPLOY: Heroku (`Procfile`, `runtime.txt`), root `requirements.txt` mirrors `Backend/requirements.txt`
 DB_FILE: `Backend/library.db` (SQLite, auto-created + auto-seeded on first run; delete to reset)
 DOCS: interactive OpenAPI at `/docs` when server running
@@ -12,16 +12,17 @@ DOCS: interactive OpenAPI at `/docs` when server running
 
 ```
 Library-Management/
-├── index.html            landing page
-├── login.html            login/register UI + OTP verification flow
-├── dashboard.html         main app UI (student+admin views, role-gated via JS)
-├── favicon.ico
-├── css/styles.css         navy/parchment/brass theme, Fraunces + IBM Plex Mono fonts
-├── js/
-│   ├── config.js          API_BASE + ENDPOINTS map (single source of truth for frontend routes)
-│   ├── api.js              fetch wrapper, attaches JWT bearer token
-│   ├── auth.js              login/register/OTP/session logic
-│   └── dashboard.js         books/borrow/return/fines/notifications/admin UI logic
+├── frontend/
+│   ├── index.html            landing page
+│   ├── login.html            login/register UI + OTP verification flow
+│   ├── dashboard.html         main app UI (student+admin views, role-gated via JS)
+│   ├── favicon.ico
+│   ├── css/styles.css         navy/parchment/brass theme, Fraunces + IBM Plex Mono fonts
+│   └── js/
+│       ├── config.js          API_BASE + ENDPOINTS map (single source of truth for frontend routes)
+│       ├── api.js              fetch wrapper, attaches JWT bearer token
+│       ├── auth.js              login/register/OTP/session logic
+│       └── dashboard.js         books/borrow/return/fines/notifications/admin UI logic
 ├── Procfile                Heroku: `web: uvicorn app.main:app --app-dir Backend --host 0.0.0.0 --port $PORT` (verify exact cmd in file)
 ├── runtime.txt              pinned python version for Heroku
 ├── requirements.txt          = Backend/requirements.txt (Heroku needs it at root)
@@ -115,7 +116,7 @@ ADMIN         GET  /admin/users/pending        admin
 HEALTH        GET  /health                     public
 ```
 
-Frontend route contract mirrored 1:1 in `js/config.js` `ENDPOINTS` — treat that object as the canonical client-side API map; keep in sync with `main.py` when changing routes.
+Frontend route contract mirrored 1:1 in `frontend/js/config.js` `ENDPOINTS` — treat that object as the canonical client-side API map; keep in sync with `main.py` when changing routes.
 
 ## 5. RUN / DEV LOOP
 
@@ -142,14 +143,14 @@ SECRET_KEY          JWT signing secret — REQUIRED in prod, insecure default ot
 DATABASE_URL        SQLAlchemy URL, defaults to sqlite:///library.db; swap for Postgres in prod
 BREVO_API_KEY / BREVO_SENDER_EMAIL / BREVO_SENDER_NAME     email provider option 1
 SMTP_HOST / SMTP_PORT / SMTP_USER / SMTP_PASS / SMTP_FROM  email provider option 2
-FRONTEND_DIR        override static-file root (defaults to repo root)
+FRONTEND_DIR        override static-file root (defaults to frontend/)
 ```
 
 ## 7. KNOWN QUIRKS / GOTCHAS FOR AGENTS
 
 - CORS is wide open (`allow_origins=["*"]`) in `main.py` — tighten before prod deploy.
-- `Backend/README.md` is a stale earlier draft (references `backend/`/`frontend/` subfolder split that no longer exists) — **root `README.md` is authoritative**, this AI_README supersedes both for structure/API lookups.
-- `js/config.js` hardcodes prod API base as `https://library.ridanul.tech/api`; `file://` protocol forces localhost fallback. `DEMO_MODE_FALLBACK` currently `false`.
+- `Backend/README.md` is an older backend-focused draft and may be stale — **root `README.md` is authoritative**, this AI_README supersedes both for structure/API lookups.
+- `frontend/js/config.js` hardcodes prod API base as `https://library.ridanul.tech/api`; `file://` protocol forces localhost fallback. `DEMO_MODE_FALLBACK` currently `false`.
 - `__pycache__/*.pyc` and `Backend/venv/` are build artifacts / dependency tree, not source — ignore when reasoning about project logic.
 - IDs are prefixed strings, not ints — don't assume integer PKs when writing queries or migrations.
 - Genres stored as CSV string on `User.genres`, not a join table — parse via `User.genre_list()`.
@@ -165,9 +166,9 @@ FRONTEND_DIR        override static-file root (defaults to repo root)
 | Change auth/token logic | `Backend/app/auth.py` |
 | Change seed/demo data | `Backend/app/seed.py` |
 | Change email templates/provider logic | `Backend/app/email_utils.py` |
-| Change frontend API endpoints | `js/config.js` |
-| Change frontend request logic | `js/api.js` |
-| Change login/register/OTP UI logic | `js/auth.js` + `login.html` |
-| Change dashboard behavior (books/fines/notifications/admin) | `js/dashboard.js` + `dashboard.html` |
-| Change visual theme | `css/styles.css` |
+| Change frontend API endpoints | `frontend/js/config.js` |
+| Change frontend request logic | `frontend/js/api.js` |
+| Change login/register/OTP UI logic | `frontend/js/auth.js` + `frontend/login.html` |
+| Change dashboard behavior (books/fines/notifications/admin) | `frontend/js/dashboard.js` + `frontend/dashboard.html` |
+| Change visual theme | `frontend/css/styles.css` |
 | Change deploy config | `Procfile`, `runtime.txt`, `requirements.txt` (root) |
