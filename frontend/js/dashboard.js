@@ -1140,3 +1140,64 @@ document.getElementById("profileForm")?.addEventListener("submit", async (e) => 
     errEl.classList.remove("hidden");
   }
 });
+    if (!window.LIB_CONFIG) {
+      console.warn('LIB_CONFIG not found — applying fallback configuration (demo mode).');
+      window.LIB_CONFIG = {
+        API_BASE: '',
+        DEMO_MODE_FALLBACK: true,
+        ENDPOINTS: {
+          register: "/auth/register",
+          login: "/auth/login",
+          me: "/auth/me",
+          books: "/books",
+          book: (id) => `/books/${id}`,
+          borrow: (id) => `/books/${id}/borrow`,
+          returnBook: (id) => `/books/${id}/return`,
+          recommendations: "/recommendations",
+          interests: "/users/interests",
+          notifications: "/notifications",
+          notificationRead: (id) => `/notifications/${id}/read`,
+        },
+      };
+    }
+       function closeMobileSidebar() {
+      const sidebar = document.getElementById('sidebar');
+      const overlay = document.getElementById('sidebarOverlay');
+      sidebar.classList.add('-translate-x-full');
+      overlay.classList.add('hidden');
+    }
+
+    function openMobileSidebar() {
+      const sidebar = document.getElementById('sidebar');
+      const overlay = document.getElementById('sidebarOverlay');
+      sidebar.classList.remove('-translate-x-full');
+      overlay.classList.remove('hidden');
+    }
+
+    // Toggle Mobile Sidebar
+    document.getElementById('sidebarToggle')?.addEventListener('click', function (e) {
+      e.stopPropagation();
+      openMobileSidebar();
+    });
+
+    // Close Mobile Sidebar Button
+    document.getElementById('sidebarClose')?.addEventListener('click', closeMobileSidebar);
+
+    // Overlay click close
+    document.getElementById('sidebarOverlay')?.addEventListener('click', closeMobileSidebar);
+
+    // Auto-close overlay when navigating on mobile screens
+    document.querySelectorAll('#sidebar .nav-btn').forEach(function (btn) {
+      btn.addEventListener('click', function () {
+        if (window.innerWidth < 640) {
+          closeMobileSidebar();
+        }
+      });
+    });
+
+    // Reset layout on window resize
+    window.addEventListener('resize', function () {
+      if (window.innerWidth >= 640) {
+        closeMobileSidebar();
+      }
+    });
