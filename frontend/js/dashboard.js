@@ -632,12 +632,12 @@ document.getElementById("bookCoverFile")?.addEventListener("change", (e) => {
     preview.classList.add("hidden");
     return;
   }
-  if (!/^image\/jpe?g$/i.test(file.type)) {
-    toast("Please choose a JPG image.");
-    e.target.value = "";
-    preview.classList.add("hidden");
-    return;
-  }
+  // if (!/^image\/jpe?g$/i.test(file.type)) {
+  //   toast("Please choose a JPG image.");
+  //   e.target.value = "";
+  //   preview.classList.add("hidden");
+  //   return;
+  // }
   preview.src = URL.createObjectURL(file);
   preview.classList.remove("hidden");
 });

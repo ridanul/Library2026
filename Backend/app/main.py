@@ -12,7 +12,12 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse
 from sqlalchemy.orm import Session
 from sqlalchemy import func, or_
-
+from appwrite.client import Client
+from appwrite.services.storage import Storage
+from appwrite.input_file import InputFile
+from appwrite.permission import Permission
+from appwrite.role import Role
+from .Module.AppwriteModule import storage as appwrite_storage
 from . import models, schemas, seed
 from .email_utils import send_verification_email
 from .database import Base, engine, ensure_schema, get_db
@@ -22,6 +27,8 @@ from .auth import (
 )
 
 Base.metadata.create_all(bind=engine)
+
+APPWRITE_BUCKET_ID = os.getenv("APPWRITE_BUCKET_ID", "")
 
 app = FastAPI(title="KiU Library API", version="1.0.0")
 
@@ -911,7 +918,6 @@ def mark_notification_read(notification_id: str, db: Session = Depends(get_db), 
     db.refresh(n)
     return schemas.NotificationOut.model_validate(n)
 
-
 @app.get("/api/health")
 def health():
     return {"status": "ok"}
@@ -923,25 +929,90 @@ def health():
 MAX_COVER_BYTES = 5 * 1024 * 1024  # 5MB
 
 
+# ===========================================================================
+# Cover image upload (admin). Accepts real JPEGs only, <=5MB.
+# ===========================================================================
+MAX_COVER_BYTES = 5 * 1024 * 1024  # 5MB
+
+
 @app.post("/api/uploads/cover")
-async def upload_cover(file: UploadFile = File(...), admin: models.User = Depends(require_admin)):
-    """Store a JPEG book cover and return its public URL (e.g. /covers/<id>.jpg)."""
+async def upload_cover(
+    file: UploadFile = File(...),
+    admin: models.User = Depends(require_admin)
+):
+    """Upload a JPEG book cover to Appwrite Storage."""
+
     content_type = (file.content_type or "").lower()
     filename = (file.filename or "").lower()
-    if content_type not in ("image/jpeg", "image/jpg") and not filename.endswith((".jpg", ".jpeg")):
-        raise HTTPException(status_code=400, detail="Only JPG/JPEG images are accepted.")
+
+    # if (
+    #     content_type not in ("image/jpeg", "image/jpg")
+    #     and not filename.endswith((".jpg", ".jpeg"))
+    # ):
+    #     raise HTTPException(
+    #         status_code=400,
+    #         detail="Only JPG/JPEG images are accepted."
+    #     )
+
     data = await file.read(MAX_COVER_BYTES + 1)
+
     if len(data) > MAX_COVER_BYTES:
-        raise HTTPException(status_code=400, detail="Cover image must be 5MB or smaller.")
+        raise HTTPException(
+            status_code=400,
+            detail="Cover image must be 5MB or smaller."
+        )
+
     if not data:
-        raise HTTPException(status_code=400, detail="Uploaded file is empty.")
-    # Verify the JPEG magic bytes — never trust the client-supplied name/type alone.
-    if not data.startswith(b"\xff\xd8\xff"):
-        raise HTTPException(status_code=400, detail="That file is not a valid JPEG image.")
-    fname = f"{uuid.uuid4().hex[:12]}.jpg"
-    _covers_dir.mkdir(parents=True, exist_ok=True)
-    (_covers_dir / fname).write_bytes(data)
-    return {"url": f"/covers/{fname}"}
+        raise HTTPException(
+            status_code=400,
+            detail="Uploaded file is empty."
+        )
+
+    # # Verify JPEG magic bytes.
+    # if not data.startswith(b"\xff\xd8\xff"):
+    #     raise HTTPException(
+    #         status_code=400,
+    #         detail="That file is not a valid JPEG image."
+    #     )
+
+    # Generate unique Appwrite file ID.
+    file_id = uuid.uuid4().hex
+
+    try:
+        result = appwrite_storage.create_file(
+            bucket_id=APPWRITE_BUCKET_ID,
+            file_id=file_id,
+            file=InputFile.from_bytes(
+                data,
+                filename=f"{file_id}.jpg"
+            ),
+            permissions=[
+                Permission.read(Role.any())
+            ]
+        )
+
+    except Exception as e:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Failed to upload cover: {str(e)}"
+        )
+
+    uploaded_id = getattr(result, "id", None) or result.get("$id") or result.get("id")
+    if not uploaded_id:
+        raise HTTPException(status_code=500, detail="Appwrite upload succeeded but returned no file ID.")
+
+    # Public Appwrite file-view URL
+    url = (
+        f"{os.getenv('APPWRITE_ENDPOINT', 'https://cloud.appwrite.io/v1')}"
+        f"/storage/buckets/{APPWRITE_BUCKET_ID}"
+        f"/files/{uploaded_id}/view"
+        f"?project={os.environ['APPWRITE_PROJECT_ID']}"
+    )
+
+    return {
+        "file_id": uploaded_id,
+        "url": url
+    }
 
 
 # ===========================================================================
@@ -972,13 +1043,6 @@ if _frontend_dir.is_dir():
     if js_dir.is_dir():
         app.mount("/js", StaticFiles(directory=str(js_dir)), name="frontend-js")
 
-    # Uploaded book-cover images live here and are served at /covers/*.
-    _covers_dir = _frontend_dir / "covers"
-    try:
-        _covers_dir.mkdir(parents=True, exist_ok=True)
-        app.mount("/covers", StaticFiles(directory=str(_covers_dir)), name="frontend-covers")
-    except OSError:
-        pass
 
 
 @app.get("/")
