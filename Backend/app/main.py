@@ -570,6 +570,7 @@ def pay_fine(fine_id: str, db: Session = Depends(get_db), current_user: models.U
 )
 def list_books(
     search: Optional[str] = Query(default=""),
+    author: Optional[str] = Query(default=""),
     genre: Optional[str] = Query(default=""),
     department: Optional[str] = Query(default=""),
     session: Optional[str] = Query(default=""),
@@ -583,6 +584,8 @@ def list_books(
     if search:
         like = f"%{search}%"
         q = q.filter(or_(models.Book.title.ilike(like), models.Book.author.ilike(like), models.Book.isbn.ilike(like)))
+    if author:
+        q = q.filter(models.Book.author == author)    
     if genre:
         q = q.filter(models.Book.genre == genre)
     if department:
@@ -598,6 +601,7 @@ def list_books(
     return schemas.BookListOut(
         items=[book_out(b) for b in items],
         total=total,
+        authors=_distinct_values(db, models.Book.author),
         departments=_distinct_values(db, models.Book.department),
         sessions=_distinct_values(db, models.Book.session),
         genres=_distinct_values(db, models.Book.genre),

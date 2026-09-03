@@ -101,6 +101,7 @@ function escapeHtml(str) {
 const bookGrid = document.getElementById("bookGrid");
 const bookEmpty = document.getElementById("bookEmpty");
 const searchInput = document.getElementById("searchInput");
+const authorFilter = document.getElementById("authorFilter");
 const genreFilter = document.getElementById("genreFilter");
 const departmentFilter = document.getElementById("departmentFilter");
 const sessionFilter = document.getElementById("sessionFilter");
@@ -114,16 +115,29 @@ let searchDebounce;
 
 async function loadBooks() {
   try {
+    console.log("Author:", authorFilter.value);
+    console.log("Genre:", genreFilter.value);
+    console.log("Department:", departmentFilter.value);
+    console.log("Session:", sessionFilter.value);
+    console.log("Category:", categoryFilter.value);
+
     const resp = await Api.listBooks({
-      search: searchInput.value.trim(),
-      genre: genreFilter.value,
-      department: departmentFilter.value,
-      session: sessionFilter.value,
-      page: state.browse.page,
-      page_size: state.browse.pageSize,
+    search: searchInput.value.trim(),
+    author: authorFilter.value,
+    genre: genreFilter.value,
+    department: departmentFilter.value,
+    session: sessionFilter.value,
+    category: categoryFilter.value,
+    page: state.browse.page,
+    page_size: state.browse.pageSize,
     });
+
+    console.log("BOOK API RESPONSE:", resp);
+    console.log("AUTHORS:", resp.authors);
+
     state.books = resp.items;
     state.browse.total = resp.total;
+
     renderBookGrid(resp.items);
     populateFilters(resp);
     renderPager(document.getElementById("browsePagination"), {
@@ -163,6 +177,11 @@ function fillFilterSelect(sel, options, allLabel) {
 // option stays visible while a filter is active; fall back to what was fetched.
 function populateFilters(facets = {}) {
   const fallback = (key) => [...new Set(state.books.map((b) => b[key]).filter(Boolean))].sort();
+  fillFilterSelect(
+  authorFilter,
+  fallback("author"),
+  "All authors"
+);
   fillFilterSelect(genreFilter, facets.genres?.length ? facets.genres : fallback("genre"), "All genres");
   fillFilterSelect(departmentFilter, facets.departments?.length ? facets.departments : fallback("department"), "All departments");
   fillFilterSelect(sessionFilter, facets.sessions?.length ? facets.sessions : fallback("session"), "All sessions");
@@ -188,6 +207,11 @@ searchInput.addEventListener("input", () => {
     state.browse.page = 1;
     loadBooks();
   }, 300);
+});
+
+authorFilter.addEventListener("change", () => {
+  state.browse.page = 1;
+  loadBooks();
 });
 
 genreFilter.addEventListener("change", () => {

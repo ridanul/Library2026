@@ -106,29 +106,46 @@
           </div>
 
           <div class="flex flex-col lg:flex-row gap-3 mb-6">
-            <input id="searchInput" type="text" placeholder="Search by title, author, or ISBN…"
-              class="flex-1 border border-ink/15 rounded px-4 py-2.5 bg-white focus:outline-none focus:ring-2 focus:ring-brass" />
-            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              <select id="genreFilter"
-                class="border border-ink/15 rounded px-3 py-2.5 bg-white focus:outline-none focus:ring-2 focus:ring-brass">
-                <option value="">All genres</option>
-              </select>
-              <select id="departmentFilter"
-                class="border border-ink/15 rounded px-3 py-2.5 bg-white focus:outline-none focus:ring-2 focus:ring-brass">
-                <option value="">All departments</option>
-              </select>
-              <select id="sessionFilter"
-                class="border border-ink/15 rounded px-3 py-2.5 bg-white focus:outline-none focus:ring-2 focus:ring-brass">
-                <option value="">All sessions</option>
-              </select>
-              <select id="categoryFilter"
-                class="border border-ink/15 rounded px-3 py-2.5 bg-white focus:outline-none focus:ring-2 focus:ring-brass">
-                <option value="">Academic &amp; non-academic</option>
-                <option value="academic">Academic</option>
-                <option value="non-academic">Non-academic</option>
-              </select>
-            </div>
-          </div>
+  <input id="searchInput" type="text"
+    placeholder="Search by title, author, or ISBN…"
+    class="flex-1 border border-ink/15 rounded px-4 py-2.5 bg-white focus:outline-none focus:ring-2 focus:ring-brass" />
+
+  <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+
+    <!-- Author -->
+    <select id="authorFilter"
+      class="border border-ink/15 rounded px-3 py-2.5 bg-white focus:outline-none focus:ring-2 focus:ring-brass">
+      <option value="">All authors</option>
+    </select>
+
+    <!-- Genre -->
+    <select id="genreFilter"
+      class="border border-ink/15 rounded px-3 py-2.5 bg-white focus:outline-none focus:ring-2 focus:ring-brass">
+      <option value="">All genres</option>
+    </select>
+
+    <!-- Department -->
+    <select id="departmentFilter"
+      class="border border-ink/15 rounded px-3 py-2.5 bg-white focus:outline-none focus:ring-2 focus:ring-brass">
+      <option value="">All departments</option>
+    </select>
+
+    <!-- Session -->
+    <select id="sessionFilter"
+      class="border border-ink/15 rounded px-3 py-2.5 bg-white focus:outline-none focus:ring-2 focus:ring-brass">
+      <option value="">All sessions</option>
+    </select>
+
+    <!-- Category -->
+    <select id="categoryFilter"
+      class="border border-ink/15 rounded px-3 py-2.5 bg-white focus:outline-none focus:ring-2 focus:ring-brass">
+      <option value="">Academic &amp; non-academic</option>
+      <option value="academic">Academic</option>
+      <option value="non-academic">Non-academic</option>
+    </select>
+
+  </div>
+</div>
 
           <div id="bookGrid" class="grid sm:grid-cols-2 lg:grid-cols-3 gap-6"></div>
           <p id="bookEmpty" class="hidden text-center text-charcoal/50 font-mono text-sm py-12">No books match that search.</p>
@@ -629,7 +646,6 @@
   </div>
 
   <script src="js/config.js"></script>
-  <script src="js/mock.js"></script>
   <script src="js/api.js"></script>
   <script src="js/auth.js"></script>
   <script src="js/dashboard.js"></script>

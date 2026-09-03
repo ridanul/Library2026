@@ -203,6 +203,7 @@ class BookOut(BaseModel):
 class BookListOut(BaseModel):
     items: List[BookOut]
     total: int
+    authors: list[str]
     departments: List[str] = []
     sessions: List[str] = []
     genres: List[str] = []
