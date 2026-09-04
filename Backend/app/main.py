@@ -584,8 +584,8 @@ def list_books(
     if search:
         like = f"%{search}%"
         q = q.filter(or_(models.Book.title.ilike(like), models.Book.author.ilike(like), models.Book.isbn.ilike(like)))
-    if author:
-        q = q.filter(models.Book.author == author)    
+    if author and author.strip():
+        q = q.filter(models.Book.author.ilike(f"%{author.strip()}%"))
     if genre:
         q = q.filter(models.Book.genre == genre)
     if department:

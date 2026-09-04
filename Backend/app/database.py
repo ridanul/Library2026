@@ -45,12 +45,14 @@ def ensure_schema():
         if "status" not in [c["name"] for c in inspector.get_columns("users")]:
             conn.execute(text("ALTER TABLE users ADD COLUMN status VARCHAR NOT NULL DEFAULT 'approved'"))
         # Lightweight migrations for later-added columns (SQLite & Postgres compatible).
+
         _add_column_if_missing(conn, "users", "department", "VARCHAR DEFAULT ''")
         _add_column_if_missing(conn, "users", "session", "VARCHAR DEFAULT ''")
         _add_column_if_missing(conn, "users", "student_id", "VARCHAR DEFAULT ''")
         _add_column_if_missing(conn, "users", "card_number", "VARCHAR DEFAULT ''")
         _add_column_if_missing(conn, "users", "card_expires_on", "DATE NULL")
         _add_column_if_missing(conn, "users", "admin_role", "VARCHAR DEFAULT ''")
+        _add_column_if_missing(conn, "users", "email_verified", "BOOLEAN DEFAULT FALSE")
         # Existing admin accounts (already seeded) should get a default library
         # role instead of an empty string.
         conn.execute(text("UPDATE users SET admin_role = 'librarian' WHERE role = 'admin' AND (admin_role IS NULL OR admin_role = '')"))

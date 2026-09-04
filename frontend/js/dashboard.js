@@ -115,15 +115,10 @@ let searchDebounce;
 
 async function loadBooks() {
   try {
-    console.log("Author:", authorFilter.value);
-    console.log("Genre:", genreFilter.value);
-    console.log("Department:", departmentFilter.value);
-    console.log("Session:", sessionFilter.value);
-    console.log("Category:", categoryFilter.value);
 
     const resp = await Api.listBooks({
     search: searchInput.value.trim(),
-    author: authorFilter.value,
+    author: authorFilter.value.trim(), // <-- add .trim()
     genre: genreFilter.value,
     department: departmentFilter.value,
     session: sessionFilter.value,
@@ -132,8 +127,7 @@ async function loadBooks() {
     page_size: state.browse.pageSize,
     });
 
-    console.log("BOOK API RESPONSE:", resp);
-    console.log("AUTHORS:", resp.authors);
+
 
     state.books = resp.items;
     state.browse.total = resp.total;
@@ -178,8 +172,8 @@ function fillFilterSelect(sel, options, allLabel) {
 function populateFilters(facets = {}) {
   const fallback = (key) => [...new Set(state.books.map((b) => b[key]).filter(Boolean))].sort();
   fillFilterSelect(
-  authorFilter,
-  fallback("author"),
+  authorFilter, 
+  facets.authors?.length ? facets.authors : fallback("author"), 
   "All authors"
 );
   fillFilterSelect(genreFilter, facets.genres?.length ? facets.genres : fallback("genre"), "All genres");
