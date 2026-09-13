@@ -156,6 +156,7 @@ async function loadBooks() {
 
     renderBookGrid(resp.items);
     populateFilters(resp);
+    populateBookAuthors(resp.authors);
     renderPager(document.getElementById("browsePagination"), {
       page: state.browse.page,
       pageSize: state.browse.pageSize,
@@ -204,6 +205,15 @@ function populateFilters(facets = {}) {
   // Academic/non-academic is a fixed pair; keep it stable regardless of facets.
   fillFilterSelect(categoryFilter, facets.categories?.length === 1 ? facets.categories : ALL_CATEGORIES,
     "Academic & non-academic");
+}
+
+function populateBookAuthors(authors = []) {
+  const authorList = document.getElementById("authorList");
+  if (!authorList) return;
+  authorList.innerHTML = authors
+    .filter(Boolean)
+    .map((author) => `<option value="${escapeHtml(author)}">`)
+    .join("");
 }
 
 async function borrowBook(id) {
@@ -717,10 +727,11 @@ bookForm?.addEventListener("submit", async (e) => {
 
 async function loadManageTable() {
   try {
-    const { items, total } = await Api.listBooks({
+    const { items, total, authors } = await Api.listBooks({
       page: state.manage.page,
       page_size: state.manage.pageSize,
     });
+    populateBookAuthors(authors);
     state.manage.total = total;
     document.getElementById("manageTableBody").innerHTML = items.map((b) => `
       <tr class="border-t border-ink/5">
