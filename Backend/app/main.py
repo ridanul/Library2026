@@ -302,9 +302,18 @@ def reject_user(user_id: str, db: Session = Depends(get_db), admin: models.User 
         raise HTTPException(status_code=404, detail="User not found.")
     if user.role not in ("student", "teacher") or user.status != "pending":
         raise HTTPException(status_code=400, detail="Only pending student or teacher accounts can be rejected.")
-    db.query(models.EmailVerification).filter(models.EmailVerification.user_id == user.id).delete(
-        synchronize_session=False
-    )
+    # Remove dependent rows first. The foreign keys are NOT NULL and the
+    # relationships do not use delete-orphan cascades, so deleting the user
+    # directly would make SQLAlchemy set notifications.user_id to NULL.
+    for model in (
+        models.Notification,
+        models.EmailVerification,
+        models.BorrowRequest,
+        models.Review,
+        models.Fine,
+        models.Borrow,
+    ):
+        db.query(model).filter(model.user_id == user.id).delete(synchronize_session=False)
     db.delete(user)
     db.commit()
     return {"status": "rejected", "user_id": user_id}
