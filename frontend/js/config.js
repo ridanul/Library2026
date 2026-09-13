@@ -5,7 +5,7 @@
 // ---------------------------------------------------------------------------
 window.LIB_CONFIG = {
   API_BASE: window.location.protocol === "https://library.ridanul.tech/api",
-  DEMO_MODE_FALLBACK: false, // Set to false to catch API errors for debugging
+  // DEMO_MODE_FALLBACK: false, // Set to false to catch API errors for debugging
   ENDPOINTS: {
     register: "/auth/register",          // POST  {name,email,password,role}
     login: "/auth/login",                // POST  {email,password} -> {token,user}
