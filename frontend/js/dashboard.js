@@ -7,7 +7,7 @@ const state = {
   browse: { page: 1, pageSize: 9, total: 0 },
   manage: { page: 1, pageSize: 10, total: 0 },
   admin: {
-    settings: { fine_per_day: 0.5, grace_days: 14, late_return_default_fine: 5 },
+    settings: { grace_days: 14, late_return_default_fine: 5 },
     users: [],
     students: { page: 1, pageSize: 10, total: 0 },
     teachers: { page: 1, pageSize: 10, total: 0 },
@@ -26,6 +26,8 @@ logoutBtn.addEventListener("click", () => Auth.logout());
 
 if (Auth.isAdmin()) {
   document.getElementById("manageNavBtn")?.classList.remove("hidden");
+  document.getElementById("borrowedNavBtn")?.classList.add("hidden");
+  document.getElementById("adminBorrowedNavBtn")?.classList.remove("hidden");
   document.getElementById("manageNavBtnMobile")?.classList.remove("hidden");
 }
 
@@ -38,8 +40,28 @@ function setView(view) {
   document.querySelectorAll(".view-panel").forEach((p) => p.classList.add("hidden"));
   document.getElementById(`view-${view}`)?.classList.remove("hidden");
   if (view === "recommendations") loadRecommendations();
+  if (view === "borrowed") loadMyBorrows();
+  if (view === "admin-borrowed" && Auth.isAdmin()) loadAdminPanels();
   if (view === "notifications") loadNotifications();
   if (view === "manage") loadManageTable();
+}
+
+async function loadMyBorrows() {
+  const list = document.getElementById("myBorrowsList");
+  if (!list) return;
+  try {
+    const { items } = await Api.getMyBorrows();
+    list.innerHTML = items.length
+      ? items.map((borrow) => `
+        <div class="rounded border border-ink/10 bg-parchment/60 p-4">
+          <p class="font-display text-lg text-ink">${escapeHtml(borrow.bookTitle)}</p>
+          <p class="text-sm text-charcoal/60">${escapeHtml(borrow.author)}</p>
+          <p class="text-xs font-mono text-charcoal/60 mt-2">Borrowed ${escapeHtml(String(borrow.borrowedAt))} · Due ${escapeHtml(String(borrow.dueDate))}</p>
+        </div>`).join("")
+      : `<p class="text-sm text-charcoal/50">You have no borrowed books.</p>`;
+  } catch (err) {
+    list.innerHTML = `<p class="text-sm text-rust">${escapeHtml(err.message || "Could not load borrowed books.")}</p>`;
+  }
 }
 setView("browse");
 
@@ -187,7 +209,7 @@ function populateFilters(facets = {}) {
 async function borrowBook(id) {
   try {
     await Api.borrowBook(id);
-    toast("Borrowed — enjoy the read.");
+    toast("Book reserved and sent for admin approval.");
     loadBooks();
     if (state.view === "manage") loadManageTable();
   } catch (err) {
@@ -324,11 +346,9 @@ if (openSettingsBtn && settingsModal) {
     try {
       const s = await Api.getAdminSettings();
       state.admin.settings = {
-        fine_per_day: Number(s.fine_per_day ?? 0),
         grace_days: Number(s.grace_days ?? 14),
         late_return_default_fine: Number(s.late_return_default_fine ?? 5),
       };
-      document.getElementById("settingFine").value = state.admin.settings.fine_per_day.toFixed(2);
       document.getElementById("settingGrace").value = String(state.admin.settings.grace_days);
       document.getElementById("settingLateDefaultFine").value = state.admin.settings.late_return_default_fine.toFixed(2);
       settingsModal.classList.remove("hidden");
@@ -340,11 +360,10 @@ if (openSettingsBtn && settingsModal) {
   document.getElementById("cancelSettingsBtn").addEventListener("click", () => settingsModal.classList.add("hidden"));
   document.getElementById("saveSettingsBtn").addEventListener("click", async () => {
     try {
-      const fine = parseFloat(document.getElementById("settingFine").value || "0");
       const grace = parseInt(document.getElementById("settingGrace").value || "0", 10);
       const lateDefault = parseFloat(document.getElementById("settingLateDefaultFine").value || "0");
-      await Api.putAdminSettings({ fine_per_day: fine, grace_days: grace, late_return_default_fine: lateDefault });
-      state.admin.settings = { fine_per_day: fine, grace_days: grace, late_return_default_fine: lateDefault };
+      await Api.putAdminSettings({ grace_days: grace, late_return_default_fine: lateDefault });
+      state.admin.settings = { grace_days: grace, late_return_default_fine: lateDefault };
       settingsModal.classList.add("hidden");
       toast("Settings saved.");
       loadAdminPanels();
@@ -749,22 +768,84 @@ async function loadManageTable() {
 async function loadAdminPanels() {
   if (!Auth.isAdmin()) return;
   try {
-    const [{ items: pendingUsers }, { items: overdueLoans }, usersResp, settingsResp] = await Promise.all([
+    const [{ items: pendingUsers }, { items: borrowRequests }, { items: overdueLoans }, { items: adminBorrows }, usersResp, settingsResp] = await Promise.all([
       Api.listPendingUsers(),
+      Api.getBorrowRequests(),
       Api.getOverdueLoans(),
+      Api.getAdminBorrows(),
       Api.listUsers(),
       Api.getAdminSettings(),
     ]);
 
     state.admin.users = usersResp.items || [];
     state.admin.settings = {
-      fine_per_day: Number(settingsResp.fine_per_day ?? 0.5),
       grace_days: Number(settingsResp.grace_days ?? 14),
       late_return_default_fine: Number(settingsResp.late_return_default_fine ?? 5),
     };
 
     document.getElementById("pendingCount").textContent = pendingUsers.length;
+    document.getElementById("borrowRequestCount").textContent = borrowRequests.length;
     document.getElementById("overdueCount").textContent = overdueLoans.length;
+    document.getElementById("adminBorrowsTableBody").innerHTML = adminBorrows.length
+      ? adminBorrows.map((borrow) => `
+        <tr class="border-t border-ink/5">
+          <td class="px-4 py-3 font-medium text-ink">${escapeHtml(borrow.userName)}</td>
+          <td class="px-4 py-3 text-charcoal/70">${escapeHtml(borrow.bookTitle)}</td>
+          <td class="px-4 py-3 font-mono text-xs text-charcoal/60">${escapeHtml(String(borrow.borrowedAt))}</td>
+          <td class="px-4 py-3 font-mono text-xs text-charcoal/60">${escapeHtml(String(borrow.dueDate))}</td>
+          <td class="px-4 py-3 text-right"><button data-return-borrow="${borrow.id}" class="text-xs font-mono border border-ink/20 text-ink px-3 py-1.5 rounded hover:bg-parchmentDark">Mark returned</button></td>
+        </tr>`).join("")
+      : `<tr><td colspan="5" class="px-4 py-3 text-sm text-charcoal/50">No students currently have borrowed books.</td></tr>`;
+
+    document.querySelectorAll("[data-return-borrow]").forEach((btn) => {
+      btn.addEventListener("click", async () => {
+        try {
+          await Api.adminReturnLoan(btn.dataset.returnBorrow);
+          toast("Book marked as returned.");
+          loadAdminPanels();
+          loadBooks();
+        } catch (err) {
+          toast(err.message || "Could not mark the book returned.");
+        }
+      });
+    });
+
+    const borrowRequestsList = document.getElementById("borrowRequestsList");
+    borrowRequestsList.innerHTML = borrowRequests.length
+      ? borrowRequests.map((request) => `
+        <div class="rounded border border-ink/10 bg-parchment/60 p-3">
+          <p class="font-medium text-ink">${escapeHtml(request.userName)} — ${escapeHtml(request.bookTitle)}</p>
+          <p class="text-xs font-mono text-charcoal/50">Requested ${escapeHtml(String(request.requestedAt || ""))}</p>
+          <div class="mt-2 flex gap-2">
+            <button data-approve-borrow="${request.id}" class="text-xs font-mono bg-ink text-parchment px-3 py-1.5 rounded hover:bg-ink/90">Approve</button>
+            <button data-reject-borrow="${request.id}" class="text-xs font-mono border border-ink/20 text-ink px-3 py-1.5 rounded hover:bg-parchmentDark">Reject</button>
+          </div>
+        </div>`).join("")
+      : `<p class="text-sm text-charcoal/50">No borrow requests are waiting.</p>`;
+
+    borrowRequestsList.querySelectorAll("[data-approve-borrow]").forEach((btn) => {
+      btn.addEventListener("click", async () => {
+        try {
+          await Api.approveBorrowRequest(btn.dataset.approveBorrow);
+          toast("Borrow request approved.");
+          loadAdminPanels();
+          loadBooks();
+        } catch (err) {
+          toast(err.message || "Could not approve that request.");
+        }
+      });
+    });
+    borrowRequestsList.querySelectorAll("[data-reject-borrow]").forEach((btn) => {
+      btn.addEventListener("click", async () => {
+        try {
+          await Api.rejectBorrowRequest(btn.dataset.rejectBorrow);
+          toast("Borrow request rejected.");
+          loadAdminPanels();
+        } catch (err) {
+          toast(err.message || "Could not reject that request.");
+        }
+      });
+    });
 
     const pendingList = document.getElementById("pendingUsersList");
     pendingList.innerHTML = pendingUsers.length
@@ -774,7 +855,10 @@ async function loadAdminPanels() {
             <p class="font-medium text-ink">${escapeHtml(user.name)}</p>
             <p class="text-xs font-mono text-charcoal/50">${escapeHtml(user.email)}</p>
           </div>
-          <button data-approve="${user.id}" class="text-xs font-mono bg-ink text-parchment px-3 py-1.5 rounded hover:bg-ink/90">Approve</button>
+          <div class="flex gap-2">
+            <button data-approve="${user.id}" class="text-xs font-mono bg-ink text-parchment px-3 py-1.5 rounded hover:bg-ink/90">Approve</button>
+            <button data-reject-user="${user.id}" class="text-xs font-mono border border-rust/30 text-rust px-3 py-1.5 rounded hover:bg-rust/5">Reject</button>
+          </div>
         </div>`).join("")
       : `<p class="text-sm text-charcoal/50">No student applications are waiting.</p>`;
 
@@ -783,6 +867,17 @@ async function loadAdminPanels() {
         await Api.approveUser(btn.dataset.approve);
         toast("Student approved.");
         loadAdminPanels();
+      });
+    });
+    pendingList.querySelectorAll("[data-reject-user]").forEach((btn) => {
+      btn.addEventListener("click", async () => {
+        try {
+          await Api.rejectUser(btn.dataset.rejectUser);
+          toast("Registration request rejected.");
+          loadAdminPanels();
+        } catch (err) {
+          toast(err.message || "Could not reject registration request.");
+        }
       });
     });
 

@@ -35,7 +35,7 @@ Library-Management/
     └── app/
         ├── __init__.py
         ├── main.py    (625 lines) — ALL routes + FastAPI app + static mount + CORS(allow_origins=*)
-        ├── models.py  (107 lines) — SQLAlchemy ORM: User, Book, Borrow, Notification, EmailVerification, AppSetting, Fine
+        ├── models.py  — SQLAlchemy ORM: User, Book, Borrow, BorrowRequest, Notification, EmailVerification, AppSetting, Fine
         ├── schemas.py (147 lines) — Pydantic request/response models
         ├── auth.py     (68 lines) — JWT create/decode, bcrypt hash/verify, get_current_user, require_admin deps
         ├── database.py (47 lines) — SQLAlchemy engine/session/Base, get_db() dependency, DATABASE_URL env override
@@ -55,13 +55,17 @@ Book            id, title, author, isbn, genre, call_number, copies(int), availa
                 description, cover_url, added_at(date)
 Borrow          id, user_id(FK), book_id(FK), borrowed_at(date), returned_at(date|null)
                 → active loan iff returned_at IS NULL
+BorrowRequest   id, user_id(FK), book_id(FK), status[pending|approved|rejected],
+                requested_at(date), resolved_at(date|null)
+                → pending request reserves one copy; approval creates a Borrow row
 Notification    id, user_id(FK), title, body, read(bool), created_at(date)
 EmailVerification id, user_id(FK), code, expires_at(str), created_at(date)  -- OTP records
 AppSetting      key(PK), value(str)  -- generic k/v store: fine-per-day, grace period, default fine
 Fine            id, user_id(FK), amount(str), reason, paid(bool), created_at(date), paid_at(date|null)
 ```
 
-INVARIANT: `Book.available` decremented on borrow, incremented on return; never goes below 0 in normal flow — check `main.py` borrow handler before modifying.
+INVARIANT: A student borrow request requires admin approval. `Book.available` is decremented immediately when the request is submitted, remains reserved on approval, and is restored if the request is rejected. Active Borrow rows restore availability on return.
+INVARIANT: A student may have at most two active Borrow rows plus pending BorrowRequest rows. The limit is checked when requesting and again when approving.
 INVARIANT: new registrations default `status="pending"`; only admins can flip to `"approved"` (see `/admin/users/{id}/approve`). Admin role cannot self-assign at registration — must be promoted by an existing admin. Last-admin cannot be demoted (protection in `main.py`).
 
 ## 3. AUTH MODEL
@@ -89,6 +93,7 @@ BOOKS         GET    /books?search=&genre=&page=   auth
               DELETE /books/{id}                     admin
               POST   /books/{id}/borrow               auth
               POST   /books/{id}/return               auth
+              GET    /borrows/me                     auth   active borrowed books for current user
 
 RECS/INTEREST GET  /recommendations           auth   (derived from user.genres)
               GET  /users/interests           auth
@@ -103,9 +108,14 @@ FINES         GET  /fines                      auth
 ADMIN         GET  /admin/users/pending        admin
               GET  /admin/users                admin
               POST /admin/users/{id}/approve   admin
+              POST /admin/users/{id}/reject    admin   reject and remove pending registration
               POST /admin/users/{id}/promote   admin
               POST /admin/users/{id}/demote    admin
               GET  /admin/overdue              admin
+              GET  /admin/borrows              admin   active loans with student and book details
+              GET  /admin/borrow-requests      admin   pending borrow requests
+              POST /admin/borrow-requests/{id}/approve admin approve request and create Borrow
+              POST /admin/borrow-requests/{id}/reject  admin reject request and restore copy
               GET  /admin/settings             admin
               PUT  /admin/settings             admin
               POST /admin/users/{id}/fine      admin

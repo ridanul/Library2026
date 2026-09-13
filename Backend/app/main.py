@@ -295,6 +295,21 @@ def approve_user(user_id: str, db: Session = Depends(get_db), admin: models.User
     return {"status": "approved", "user": user_out(user)}
 
 
+@app.post("/api/admin/users/{user_id}/reject")
+def reject_user(user_id: str, db: Session = Depends(get_db), admin: models.User = Depends(require_admin)):
+    user = db.query(models.User).filter(models.User.id == user_id).first()
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found.")
+    if user.role not in ("student", "teacher") or user.status != "pending":
+        raise HTTPException(status_code=400, detail="Only pending student or teacher accounts can be rejected.")
+    db.query(models.EmailVerification).filter(models.EmailVerification.user_id == user.id).delete(
+        synchronize_session=False
+    )
+    db.delete(user)
+    db.commit()
+    return {"status": "rejected", "user_id": user_id}
+
+
 @app.post("/api/admin/users/{user_id}/promote")
 def promote_to_admin(user_id: str, db: Session = Depends(get_db), admin: models.User = Depends(require_admin)):
     """Promote a student to admin role (admin-only endpoint)"""
@@ -348,14 +363,13 @@ def demote_from_admin(user_id: str, db: Session = Depends(get_db), admin: models
 def list_overdue(db: Session = Depends(get_db), admin: models.User = Depends(require_admin)):
     from datetime import date, timedelta
     grace_days = int(get_setting(db, "grace_days", "14"))
-    fine_per_day = float(get_setting(db, "fine_per_day", "0.5"))
+    default_fine = float(get_setting(db, "late_return_default_fine", "5.0"))
     items = []
     borrows = db.query(models.Borrow).filter(models.Borrow.returned_at.is_(None)).all()
     for br in borrows:
         due = br.borrowed_at + timedelta(days=grace_days)
         if date.today() > due:
             days_over = (date.today() - due).days
-            fine = round(days_over * fine_per_day, 2)
             items.append({
                 "id": br.id,
                 "userId": br.user_id,
@@ -365,7 +379,7 @@ def list_overdue(db: Session = Depends(get_db), admin: models.User = Depends(req
                 "borrowed_at": br.borrowed_at,
                 "due_date": due,
                 "days_overdue": days_over,
-                "fine": fine,
+                "fine": default_fine,
             })
     return {"items": items}
 
@@ -686,10 +700,26 @@ def borrow_book(book_id: str, db: Session = Depends(get_db), current_user: model
         raise HTTPException(status_code=403, detail="Admin accounts cannot borrow books.")
     if book.available < 1:
         raise HTTPException(status_code=400, detail="No copies available.")
+    active_loans = db.query(models.Borrow).filter(
+        models.Borrow.user_id == current_user.id,
+        models.Borrow.returned_at.is_(None),
+    ).count()
+    pending_requests = db.query(models.BorrowRequest).filter(
+        models.BorrowRequest.user_id == current_user.id,
+        models.BorrowRequest.status == "pending",
+    ).count()
+    if active_loans + pending_requests >= 2:
+        raise HTTPException(status_code=400, detail="You cannot have more than two books at once.")
+    duplicate_request = db.query(models.BorrowRequest).filter(
+        models.BorrowRequest.user_id == current_user.id,
+        models.BorrowRequest.book_id == book.id,
+        models.BorrowRequest.status == "pending",
+    ).first()
+    if duplicate_request:
+        raise HTTPException(status_code=400, detail="You already have a pending request for this book.")
     book.available -= 1
-    db.add(models.Borrow(user_id=current_user.id, book_id=book.id))
+    db.add(models.BorrowRequest(user_id=current_user.id, book_id=book.id))
     db.commit()
-    db.refresh(book)
     return book_out(book)
 
 
@@ -709,6 +739,29 @@ def return_book(book_id: str, db: Session = Depends(get_db), current_user: model
     db.commit()
     db.refresh(book)
     return book_out(book)
+
+
+@app.get("/api/borrows/me")
+def list_my_borrows(
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(get_current_user),
+):
+    from datetime import timedelta
+    grace_days = int(get_setting(db, "grace_days", "14"))
+    rows = (
+        db.query(models.Borrow)
+        .filter(models.Borrow.user_id == current_user.id, models.Borrow.returned_at.is_(None))
+        .order_by(models.Borrow.borrowed_at.desc())
+        .all()
+    )
+    return {"items": [{
+        "id": borrow.id,
+        "bookId": borrow.book_id,
+        "bookTitle": borrow.book.title,
+        "author": borrow.book.author,
+        "borrowedAt": borrow.borrowed_at,
+        "dueDate": borrow.borrowed_at + timedelta(days=grace_days),
+    } for borrow in rows]}
 
 
 # ===========================================================================
@@ -733,6 +786,102 @@ def admin_mark_return(
         book.available = available_after
     db.commit()
     return {"status": "ok", "borrow_id": br.id, "returned_at": date.today(), "available": available_after}
+
+
+@app.get("/api/admin/borrow-requests")
+def list_borrow_requests(db: Session = Depends(get_db), admin: models.User = Depends(require_admin)):
+    rows = (
+        db.query(models.BorrowRequest)
+        .filter(models.BorrowRequest.status == "pending")
+        .order_by(models.BorrowRequest.requested_at.asc())
+        .all()
+    )
+    return {"items": [{
+        "id": request.id,
+        "userId": request.user_id,
+        "userName": request.user.name,
+        "bookId": request.book_id,
+        "bookTitle": request.book.title,
+        "requestedAt": request.requested_at,
+    } for request in rows]}
+
+
+@app.get("/api/admin/borrows")
+def list_admin_borrows(db: Session = Depends(get_db), admin: models.User = Depends(require_admin)):
+    from datetime import timedelta
+    grace_days = int(get_setting(db, "grace_days", "14"))
+    rows = (
+        db.query(models.Borrow)
+        .filter(models.Borrow.returned_at.is_(None))
+        .order_by(models.Borrow.borrowed_at.desc())
+        .all()
+    )
+    return {"items": [{
+        "id": borrow.id,
+        "userId": borrow.user_id,
+        "userName": borrow.user.name,
+        "bookId": borrow.book_id,
+        "bookTitle": borrow.book.title,
+        "borrowedAt": borrow.borrowed_at,
+        "dueDate": borrow.borrowed_at + timedelta(days=grace_days),
+    } for borrow in rows]}
+
+
+@app.post("/api/admin/borrow-requests/{request_id}/approve")
+def approve_borrow_request(
+    request_id: str,
+    db: Session = Depends(get_db),
+    admin: models.User = Depends(require_admin),
+):
+    request = db.query(models.BorrowRequest).filter(models.BorrowRequest.id == request_id).first()
+    if not request or request.status != "pending":
+        raise HTTPException(status_code=404, detail="Pending borrow request not found.")
+    book = db.query(models.Book).filter(models.Book.id == request.book_id).first()
+    if not book:
+        raise HTTPException(status_code=404, detail="Book not found.")
+    active_loans = db.query(models.Borrow).filter(
+        models.Borrow.user_id == request.user_id,
+        models.Borrow.returned_at.is_(None),
+    ).count()
+    if active_loans >= 2:
+        raise HTTPException(status_code=400, detail="This student already has two active books.")
+    request.status = "approved"
+    request.resolved_at = date.today()
+    db.add(models.Borrow(user_id=request.user_id, book_id=request.book_id))
+    db.add(models.Notification(
+        user_id=request.user_id,
+        title="Borrow request approved",
+        body=f"Your request for {book.title} was approved.",
+        read=False,
+        created_at=date.today(),
+    ))
+    db.commit()
+    return {"status": "ok", "request_id": request.id, "available": book.available}
+
+
+@app.post("/api/admin/borrow-requests/{request_id}/reject")
+def reject_borrow_request(
+    request_id: str,
+    db: Session = Depends(get_db),
+    admin: models.User = Depends(require_admin),
+):
+    request = db.query(models.BorrowRequest).filter(models.BorrowRequest.id == request_id).first()
+    if not request or request.status != "pending":
+        raise HTTPException(status_code=404, detail="Pending borrow request not found.")
+    book = db.query(models.Book).filter(models.Book.id == request.book_id).first()
+    if book:
+        book.available = min(book.copies, book.available + 1)
+    request.status = "rejected"
+    request.resolved_at = date.today()
+    db.add(models.Notification(
+        user_id=request.user_id,
+        title="Borrow request declined",
+        body=f"Your request for {request.book.title} was declined.",
+        read=False,
+        created_at=date.today(),
+    ))
+    db.commit()
+    return {"status": "ok", "request_id": request.id}
 
 
 def _review_out(r: models.Review) -> schemas.ReviewOut:

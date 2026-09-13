@@ -84,6 +84,8 @@
       <div class="flex flex-col gap-2 p-4 sm:p-6 sm:sticky sm:top-[77px]">
         <button data-view="browse" class="nav-btn text-ink hover:text-brass transition px-3 py-2 text-left font-medium rounded hover:bg-parchmentDark/50">Browse</button>
         <button data-view="recommendations" class="nav-btn text-ink hover:text-brass transition px-3 py-2 text-left font-medium rounded hover:bg-parchmentDark/50">For You</button>
+        <button data-view="borrowed" id="borrowedNavBtn" class="nav-btn text-ink hover:text-brass transition px-3 py-2 text-left font-medium rounded hover:bg-parchmentDark/50">Borrowed books</button>
+        <button data-view="admin-borrowed" id="adminBorrowedNavBtn" class="nav-btn hidden text-ink hover:text-brass transition px-3 py-2 text-left font-medium rounded hover:bg-parchmentDark/50">All borrowed books</button>
         <button data-view="notifications" class="nav-btn text-ink hover:text-brass transition px-3 py-2 text-left font-medium rounded hover:bg-parchmentDark/50 relative">
           Notifications
           <span id="notifDot" class="hidden absolute top-3 right-3 w-2 h-2 rounded-full bg-rust"></span>
@@ -165,6 +167,32 @@
           <div id="interestChips" class="flex flex-wrap gap-2 mb-6"></div>
           <div id="recGrid" class="grid sm:grid-cols-2 lg:grid-cols-3 gap-6"></div>
           <p id="recEmpty" class="hidden text-center text-charcoal/50 font-mono text-sm py-12">Add a few interests to get personalized picks.</p>
+        </section>
+
+        <!-- NOTIFICATIONS VIEW -->
+        <section id="view-borrowed" class="view-panel hidden bg-white rounded-lg p-5 sm:p-8 border border-ink/10 shadow-md">
+          <p class="font-mono text-xs tracking-[0.2em] text-brass uppercase mb-1">Your loans</p>
+          <h1 class="font-display text-3xl text-ink mb-6">Borrowed books</h1>
+          <div id="myBorrowsList" class="space-y-3 max-w-3xl"></div>
+        </section>
+
+        <section id="view-admin-borrowed" class="view-panel hidden bg-white rounded-lg p-5 sm:p-8 border border-ink/10 shadow-md">
+          <p class="font-mono text-xs tracking-[0.2em] text-brass uppercase mb-1">Circulation Desk</p>
+          <h1 class="font-display text-3xl text-ink mb-6">All borrowed books</h1>
+          <div class="overflow-x-auto border border-ink/10 rounded-lg bg-white">
+            <table class="w-full text-sm border-collapse min-w-[760px]">
+              <thead class="bg-parchmentDark font-mono text-xs uppercase tracking-wide text-charcoal/70">
+                <tr>
+                  <th class="text-left px-4 py-3">Student</th>
+                  <th class="text-left px-4 py-3">Book</th>
+                  <th class="text-left px-4 py-3">Borrowed</th>
+                  <th class="text-left px-4 py-3">Due</th>
+                  <th class="text-right px-4 py-3">Action</th>
+                </tr>
+              </thead>
+              <tbody id="adminBorrowsTableBody"></tbody>
+            </table>
+          </div>
         </section>
 
         <!-- NOTIFICATIONS VIEW -->
@@ -254,6 +282,14 @@
           <div id="managePagination" class="mt-5 flex flex-wrap items-center justify-center gap-2"></div>
 
           <div class="grid lg:grid-cols-2 gap-6 mt-8">
+            <div class="border border-ink/10 rounded-lg bg-white/70 p-5">
+              <div class="flex items-center justify-between mb-4">
+                <h2 class="font-display text-xl text-ink">Pending borrow requests</h2>
+                <span id="borrowRequestCount" class="stamp stamp-new border-brass text-brass text-[10px]">0</span>
+              </div>
+              <div id="borrowRequestsList" class="space-y-2"></div>
+            </div>
+
             <div class="border border-ink/10 rounded-lg bg-white/70 p-5">
               <div class="flex items-center justify-between mb-4">
                 <h2 class="font-display text-xl text-ink">Pending student approvals</h2>
@@ -540,11 +576,6 @@
         <button id="closeSettingsModal" class="text-charcoal/50 hover:text-charcoal">✕</button>
       </div>
       <div class="space-y-3">
-        <div>
-          <label class="block text-xs font-mono uppercase text-charcoal/60 mb-1">Fine per day (currency)</label>
-          <input id="settingFine" type="number" min="0" step="0.01"
-            class="w-full border border-ink/15 rounded px-3 py-2 bg-white" />
-        </div>
         <div>
           <label class="block text-xs font-mono uppercase text-charcoal/60 mb-1">Default late-return fine</label>
           <input id="settingLateDefaultFine" type="number" min="0" step="0.01"
