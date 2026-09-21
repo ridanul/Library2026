@@ -2,281 +2,775 @@
 <html lang="en">
 
 <head>
-	<meta charset="UTF-8" />
-	<title>KiU Library System - Home</title>
-	<link rel="stylesheet" href="css/index.css" />
-	<meta name="viewport" content="width=device-width, initial-scale=1.0" />
-	<script src="https://cdn.tailwindcss.com"></script>
-	<script src="js/tailwind.config.js"></script>
-	<link rel="stylesheet" href="css/styles.css" />
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+    <title>KIU Library | Kishoreganj University</title>
+
+    <link rel="icon" href="./kiu_logo.png" />
+    <link rel="stylesheet" href="css/index.css" />
+    <link rel="stylesheet" href="css/styles.css" />
+
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="js/tailwind.config.js"></script>
 </head>
 
-<body class="paper-texture min-h-screen bg-gray-50">
-	<!-- Header & Navigation -->
-	<header class="bg-white border-b border-ink/10 shadow-sm sticky top-0 z-50">
-		<div class="max-w-7xl mx-auto px-4 sm:px-6 py-4">
-			<div id="headerContent" class="flex flex-col gap-3 sm:flex-row items-center justify-between">
-				<div class="flex items-center gap-3 sm:gap-4 min-w-0">
-					<img src="./kiu_logo.png" alt="KiU Library Logo" class="h-10 w-10 sm:h-12 sm:w-12 object-contain" />
-					<h1 class="font-display text-2xl sm:text-3xl font-bold text-ink whitespace-nowrap">KiU Library</h1>
-					<p class="hidden md:block text-xs text-charcoal/60 font-mono truncate">Knowledge · Information ·
-						Understanding</p>
-				</div>
-				<nav id="guestNav" class="flex flex-wrap items-center gap-3 sm:gap-6 text-sm justify-between">
-					<a href="#"
-						class="text-ink hover:text-brass transition md:hover:bg-blue-300 md:py-1 md:px-2 rounded-md ">Catalog</a>
-					<a href="#"
-						class="text-ink hover:text-brass transition md:hover:bg-blue-300 md:py-1 md:px-2 rounded-md ">Resources</a>
-					<a href="#"
-						class="text-ink hover:text-brass transition md:hover:bg-blue-300 md:py-1 md:px-2 rounded-md ">About</a>
-					<a href="login.html" class="text-ink md:hover:bg-blue-300 md:py-1 md:px-2 rounded-md">Sign in</a>
-					<a href="login.html"
-						class="text-ink md:hover:bg-blue-300 md:py-1 md:px-2 rounded-md ">Register</a>
-				</nav>
-				<nav id="userNav" class="hidden flex flex-wrap items-center gap-3 sm:gap-6 text-sm">
-					<a href="dashboard.html"
-						class="text-[10px] sm:text-sm font-mono w-15 border border-ink/20 rounded px-2 py-1 hover:bg-parchmentDark transition">Dashboard</a>
-						<!-- class="text-ink hover:text-brass transition md:hover:bg-blue-300 md:py-1 md:px-2 rounded-md ">Dashboard</a> -->
-				</nav>
-			</div>
-		</div>
-	</header>
+<body>
 
-	<!-- Main Content -->
-	<main class="max-w-7xl mx-auto px-4 sm:px-6 py-8">
-		<!-- Hero Search Section -->
-		<section class="bg-white rounded-lg p-8 shadow-md mb-8 border border-ink/10">
-			<h2 class="text-2xl font-bold text-ink mb-3">Search the Library Catalog</h2>
-			<p class="text-sm text-charcoal/60 mb-4">Find books, journals, and resources by title, author, or ISBN.</p>
-			<form id="landingSearch" class="flex flex-col sm:flex-row gap-3">
-				<input id="landingQuery" type="text" placeholder="Search books, journals, or authors…"
-					class="flex-1 border border-ink/20 rounded px-4 py-3 focus:outline-none focus:border-ink" />
-				<button
-					class="bg-ink text-parchment px-6 py-3 rounded font-semibold hover:bg-opacity-90 transition">Search</button>
-			</form>
-		</section>
+    <!-- =========================================================
+         HEADER
+    ========================================================== -->
+    <header class="site-header">
+    <div class="nav-container">
 
-		<!-- Carousel Section -->
-		<section class="bg-white rounded-lg p-8 shadow-md mb-8 border border-ink/10 relative z-0">
-			<h2 class="font-mono text-sm text-brass uppercase font-bold mb-4">Library Highlights</h2>
-			<div class="carousel-container">
-				<div class="carousel-slide active">
-					<h3>📚 Welcome to KiU Library</h3>
-					<p>Discover thousands of academic resources, journals, and books curated for your learning needs.
-					</p>
-				</div>
-				<div class="carousel-slide">
-					<h3>🎓 Digital Resources</h3>
-					<p>Access e-journals and e-books from leading academic publishers and databases.</p>
-				</div>
-				<div class="carousel-slide">
-					<h3>🔍 Advanced Search</h3>
-					<p>Find exactly what you need with our powerful search and filtering capabilities.</p>
-				</div>
-				<div class="carousel-controls">
-					<button class="carousel-btn" onclick="changeSlide(-1)">← Previous</button>
-					<button class="carousel-btn" onclick="changeSlide(1)">Next →</button>
-				</div>
-			</div>
-		</section>
+        <div class="brand">
 
-		<!-- E-Journals Section -->
-		<section class="bg-white rounded-lg p-8 shadow-md mb-8 border border-ink/10">
-			<h2 class="font-mono text-sm text-brass uppercase font-bold mb-2">Subscribed E-Journals</h2>
-			<p class="text-xs text-charcoal/60 mb-4">Access leading academic journals and publications</p>
-			<div class="resources-grid">
-				<div class="resource-card">
-					<div class="resource-logo text-4xl">🔬</div>
-					<div class="resource-name">IEEE</div>
-					<a href="#" class="visit-btn">Visit</a>
-				</div>
-				<div class="resource-card">
-					<div class="resource-logo text-4xl">📖</div>
-					<div class="resource-name">Nature</div>
-					<a href="#" class="visit-btn">Visit</a>
-				</div>
-				<div class="resource-card">
-					<div class="resource-logo text-4xl">📚</div>
-					<div class="resource-name">Science Direct</div>
-					<a href="#" class="visit-btn">Visit</a>
-				</div>
-				<div class="resource-card">
-					<div class="resource-logo text-4xl">📰</div>
-					<div class="resource-name">JSTOR</div>
-					<a href="#" class="visit-btn">Visit</a>
-				</div>
-				<div class="resource-card">
-					<div class="resource-logo text-4xl">🌐</div>
-					<div class="resource-name">Taylor & Francis</div>
-					<a href="#" class="visit-btn">Visit</a>
-				</div>
-				<div class="resource-card">
-					<div class="resource-logo text-4xl">📝</div>
-					<div class="resource-name">Emerald</div>
-					<a href="#" class="visit-btn">Visit</a>
-				</div>
-			</div>
-		</section>
+            <a href="index.html" class="brand-home">
+                <img src="./kiu_logo.png" alt="Kishoreganj University Logo">
 
-		<!-- E-Books Section -->
-		<section class="bg-white rounded-lg p-8 shadow-md mb-8 border border-ink/10">
-			<h2 class="font-mono text-sm text-brass uppercase font-bold mb-2">Subscribed E-Books</h2>
-			<p class="text-xs text-charcoal/60 mb-4">Comprehensive collection of digital books from top publishers</p>
-			<div class="resources-grid">
-				<div class="resource-card">
-					<div class="resource-logo text-4xl">📘</div>
-					<div class="resource-name">Springer</div>
-					<a href="#" class="visit-btn">Visit</a>
-				</div>
-				<div class="resource-card">
-					<div class="resource-logo text-4xl">📗</div>
-					<div class="resource-name">Sage</div>
-					<a href="#" class="visit-btn">Visit</a>
-				</div>
-				<div class="resource-card">
-					<div class="resource-logo text-4xl">📕</div>
-					<div class="resource-name">McGraw Hill</div>
-					<a href="#" class="visit-btn">Visit</a>
-				</div>
-				<div class="resource-card">
-					<div class="resource-logo text-4xl">📙</div>
-					<div class="resource-name">Elsevier</div>
-					<a href="#" class="visit-btn">Visit</a>
-				</div>
-				<div class="resource-card">
-					<div class="resource-logo text-4xl">📔</div>
-					<div class="resource-name">Wiley</div>
-					<a href="#" class="visit-btn">Visit</a>
-				</div>
-				<div class="resource-card">
-					<div class="resource-logo text-4xl">📓</div>
-					<div class="resource-name">ProQuest</div>
-					<a href="#" class="visit-btn">Visit</a>
-				</div>
-			</div>
-		</section>
+                <div class="brand-text">
+                    <span class="brand-title">KIU Library</span>
+                </div>
+            </a>
 
-		<!-- Library Information Section -->
-		<section class="bg-white rounded-lg p-8 shadow-md mb-8 border border-ink/10">
-			<h2 class="font-mono text-sm text-brass uppercase font-bold mb-6">Library Information</h2>
-			<div class="info-grid">
-				<div class="info-card">
-					<h3>📞 Contact</h3>
-					<p><strong>Librarian (In-Charge)</strong></p>
-					<p>Email: library@kiu.ac.bd</p>
-					<p>Phone: 02-9988 32221</p>
-					<p>Ext: 671</p>
-				</div>
-				<div class="info-card">
-					<h3>💻 IT Support</h3>
-					<p><strong>Technical Assistance</strong></p>
-					<p>Email: registrar@kiu.ac.bd</p>
-					<p>Phone: 02-9988 32221</p>
-					<p>Hours: 9:00 AM - 4:00 PM</p>
-				</div>
-				<div class="info-card">
-					<h3>📍 Location</h3>
-					<p><strong>Central Library</strong></p>
-					<p>Kishoreganj University</p>
-					<p>Gurudayal Govt. College</p>
-					<p>Kishoreganj Sadar-2300, Bangladesh</p>
-				</div>
-			</div>
-		</section>
+            <div class="brand-subtitle">
+                <button type="button" class="brand-link" data-info="knowledge">
+                    Knowledge
+                </button>
 
-		<!-- Library Hours Section -->
-		<section class="bg-white rounded-lg p-8 shadow-md mb-8 border border-ink/10">
-			<h2 class="font-mono text-sm text-brass uppercase font-bold mb-4">Library Hours</h2>
-			<div class="overflow-x-auto">
-				<table class="hours-table">
-					<thead>
-						<tr>
-							<th>Day</th>
-							<th>Hours</th>
-							<th>Notes</th>
-						</tr>
-					</thead>
-					<tbody>
-						<tr>
-							<td>Saturday - Wednesday</td>
-							<td>9:00 AM - 5:00 PM</td>
-							<td>Regular hours</td>
-						</tr>
-						<tr>
-							<td>Launch & Prayer Break</td>
-							<td>1:30 PM - 3:00 PM</td>
-							<td>Closed for break</td>
-						</tr>
-						<tr>
-							<td>Reference Section</td>
-							<td>8:00 AM - 9:00 PM</td>
-							<td>Extended hours</td>
-						</tr>
-						<tr>
-							<td>Thursday & Friday</td>
-							<td>Closed</td>
-							<td>Weekly holiday</td>
-						</tr>
-						<tr>
-							<td>Government Holidays</td>
-							<td>Closed</td>
-							<td>All day</td>
-						</tr>
-					</tbody>
-				</table>
-			</div>
-		</section>
+                <span>·</span>
 
-		<!-- Latest Notices Section -->
-		<section class="bg-white rounded-lg p-8 shadow-md mb-8 border border-ink/10">
-			<h2 class="font-mono text-sm text-brass uppercase font-bold mb-4">Latest Notices</h2>
-			<div id="notices" class="space-y-3">
-				<div class="p-4 border-l-4 border-brass rounded bg-parchment/40">
-					<p class="font-semibold text-sm mb-1">New Arrivals Available</p>
-					<p class="text-xs text-charcoal/70">New books in Science, Technology, and Engineering sections are
-						now available for checkout.</p>
-				</div>
-				<div class="p-4 border-l-4 border-brass rounded bg-parchment/40">
-					<p class="font-semibold text-sm mb-1">E-Journal Access Update</p>
-					<p class="text-xs text-charcoal/70">All subscribed e-journals are now accessible with your library
-						account credentials.</p>
-				</div>
-				<div class="p-4 border-l-4 border-brass rounded bg-parchment/40">
-					<p class="font-semibold text-sm mb-1">Library Policies</p>
-					<p class="text-xs text-charcoal/70">Loan period: 14 days. Fines accrue per day for overdue items.
-						Admin approval required for student accounts.</p>
-				</div>
-			</div>
-		</section>
-	</main>
+                <button type="button" class="brand-link" data-info="information">
+                    Information
+                </button>
 
-	<!-- Footer -->
-	<footer class="bg-ink text-parchment py-8 mt-12 border-t border-ink/20">
-		<div class="max-w-7xl mx-auto px-4 sm:px-6">
-			<div class="grid grid-cols-1 md:grid-cols-3 gap-8 mb-6">
-				<div>
-					<h3 class="font-bold text-sm mb-2">About KiU Library</h3>
-					<p class="text-xs opacity-80">Providing access to knowledge and information resources for the
-						Kishoreganj University community.</p>
-				</div>
-				<div>
-					<h3 class="font-bold text-sm mb-2">Quick Links</h3>
-					<ul class="text-xs space-y-1 opacity-80">
-						<li><a href="#" class="hover:underline">Catalog</a></li>
-						<li><a href="#" class="hover:underline">E-Resources</a></li>
-						<li><a href="#" class="hover:underline">Contact</a></li>
-					</ul>
-				</div>
-				<div>
-					<h3 class="font-bold text-sm mb-2">Social Links</h3>
-					<p class="text-xs opacity-80">Follow us for updates and announcements</p>
-				</div>
-			</div>
-			<div class="border-t border-parchment/20 pt-4 text-xs opacity-70 text-center">
-				<p>© 2026 Kishoreganj University Library. All rights reserved.</p>
-			</div>
-		</div>
-	</footer>
-	<script src="js/index.js"></script>
+                <span>·</span>
+
+                <button type="button" class="brand-link" data-info="understanding">
+                    Understanding
+                </button>
+            </div>
+
+        </div>
+
+        <button id="mobileMenuBtn" class="mobile-menu-btn" aria-label="Open menu">
+            ☰
+        </button>
+
+        <nav id="mainNav" class="main-nav">
+            <a href="#catalog">Catalog</a>
+            <a href="#resources">Resources</a>
+            <a href="#services">Services</a>
+            <a href="#about">About</a>
+
+            <a href="login.html" class="nav-login" id="authNavLink">
+    Sign in
+</a>
+        </nav>
+
+    </div>
+</header>
+    <!-- =========================================================
+         HERO
+    ========================================================== -->
+    <main>
+
+        <section class="hero" id="catalog">
+
+            <div class="hero-content">
+
+                <div class="hero-label">
+                    KISHOREGANJ UNIVERSITY LIBRARY
+                </div>
+
+                <h1>
+                    Discover knowledge.<br>
+                    <span>Explore beyond.</span>
+                </h1>
+
+                <p class="hero-description">
+                    Search books, journals, academic resources and
+                    everything available through the KIU Library.
+                </p>
+
+                <!-- Search -->
+                <form id="landingSearch" class="library-search">
+
+                    <div class="search-icon">
+                        🔍
+                    </div>
+
+                    <input
+                        id="landingQuery"
+                        type="search"
+                        autocomplete="off"
+                        placeholder="Search by title, author, ISBN..."
+                        aria-label="Search library catalog"
+                    />
+
+                    <button type="submit">
+                        Search
+                    </button>
+
+                </form>
+
+                <div class="search-hints">
+                    <span>Popular:</span>
+                    <button type="button" data-search="Python">Python</button>
+                    <button type="button" data-search="Database">Database</button>
+                    <button type="button" data-search="Algorithms">Algorithms</button>
+                    <button type="button" data-search="Artificial Intelligence">Artificial Intelligence</button>
+                </div>
+
+            </div>
+
+        </section>
+
+
+        <!-- =====================================================
+             QUICK ACCESS
+        ====================================================== -->
+        <section class="quick-section">
+
+            <div class="quick-grid">
+
+                <a href="#hours" class="quick-card">
+                    <div class="quick-icon">◷</div>
+                    <div>
+                        <span class="quick-title">Library Hours</span>
+                        <span class="quick-text">Check today's opening hours</span>
+                    </div>
+                    <span class="arrow">→</span>
+                </a>
+
+                <a href="dashboard.html" class="quick-card">
+                    <div class="quick-icon">▣</div>
+                    <div>
+                        <span class="quick-title">My Library</span>
+                        <span class="quick-text">Manage your books and account</span>
+                    </div>
+                    <span class="arrow">→</span>
+                </a>
+
+                <a href="#contact" class="quick-card">
+                    <div class="quick-icon">?</div>
+                    <div>
+                        <span class="quick-title">Ask the Library</span>
+                        <span class="quick-text">Need help? Contact the library</span>
+                    </div>
+                    <span class="arrow">→</span>
+                </a>
+
+            </div>
+
+        </section>
+
+
+        <!-- =====================================================
+             LIBRARY INTRO
+        ====================================================== -->
+        <section class="intro-section">
+
+            <div class="section-container intro-grid">
+
+                <div>
+                    <span class="section-kicker">WELCOME TO KIU LIBRARY</span>
+
+                    <h2>
+                        A place to learn,<br>
+                        research and discover.
+                    </h2>
+                </div>
+
+                <div class="intro-text">
+                    <p>
+                        KIU Library provides students, teachers and
+                        researchers with access to books, journals,
+                        digital resources and academic support.
+                    </p>
+
+                    <p>
+                        Search the collection, explore digital resources,
+                        borrow books and manage your library account
+                        from one place.
+                    </p>
+
+                    <a href="#services" class="text-link">
+                        Explore library services →
+                    </a>
+                </div>
+
+            </div>
+
+        </section>
+
+
+        <!-- =====================================================
+             SERVICES
+        ====================================================== -->
+        <section id="services" class="section-light">
+
+            <div class="section-container">
+
+                <div class="section-heading">
+                    <div>
+                        <span class="section-kicker">WHAT WE OFFER</span>
+
+                        <h2>Library Services</h2>
+                    </div>
+
+                    <p>
+                        Resources and services designed to support
+                        your academic journey.
+                    </p>
+                </div>
+
+
+                <div class="services-grid">
+
+                    <div class="service-card">
+                        <span class="service-number">01</span>
+                        <div class="service-icon">📚</div>
+                        <h3>Book Lending</h3>
+                        <p>
+                            Search the catalog and borrow available
+                            books through your library account.
+                        </p>
+                        <a href="#catalog">Search books →</a>
+                    </div>
+
+                    <div class="service-card">
+                        <span class="service-number">02</span>
+                        <div class="service-icon">⌕</div>
+                        <h3>Research Support</h3>
+                        <p>
+                            Find academic materials and discover
+                            resources for your research.
+                        </p>
+                        <a href="#resources">Explore resources →</a>
+                    </div>
+
+                    <div class="service-card">
+                        <span class="service-number">03</span>
+                        <div class="service-icon">◎</div>
+                        <h3>Digital Resources</h3>
+                        <p>
+                            Access subscribed e-journals and
+                            electronic books.
+                        </p>
+                        <a href="#resources">View resources →</a>
+                    </div>
+
+                    <div class="service-card">
+                        <span class="service-number">04</span>
+                        <div class="service-icon">⌂</div>
+                        <h3>Study Spaces</h3>
+                        <p>
+                            Use the library environment for focused
+                            individual study and academic work.
+                        </p>
+                        <a href="#hours">View hours →</a>
+                    </div>
+
+                </div>
+
+            </div>
+
+        </section>
+
+
+        <!-- =====================================================
+             DIGITAL RESOURCES
+        ====================================================== -->
+        <section id="resources" class="resources-section">
+
+            <div class="section-container">
+
+                <div class="section-heading">
+                    <div>
+                        <span class="section-kicker">ONLINE COLLECTION</span>
+                        <h2>Digital Resources</h2>
+                    </div>
+
+                    <p>
+                        Explore academic publishers and research
+                        platforms available through the library.
+                    </p>
+                </div>
+
+
+                <div class="resource-category">
+
+                    <div class="resource-category-title">
+                        <span>E-JOURNALS</span>
+                        <small>Academic journals & publications</small>
+                    </div>
+
+                    <div class="resource-grid">
+
+                        <a href="#" class="resource-card">
+                            <span class="resource-symbol">IEEE</span>
+                            <strong>IEEE</strong>
+                            <small>Engineering & technology</small>
+                            <span class="resource-arrow">↗</span>
+                        </a>
+
+                        <a href="#" class="resource-card">
+                            <span class="resource-symbol">N</span>
+                            <strong>Nature</strong>
+                            <small>Science & research</small>
+                            <span class="resource-arrow">↗</span>
+                        </a>
+
+                        <a href="#" class="resource-card">
+                            <span class="resource-symbol">SD</span>
+                            <strong>ScienceDirect</strong>
+                            <small>Scientific literature</small>
+                            <span class="resource-arrow">↗</span>
+                        </a>
+
+                        <a href="#" class="resource-card">
+                            <span class="resource-symbol">J</span>
+                            <strong>JSTOR</strong>
+                            <small>Academic journals</small>
+                            <span class="resource-arrow">↗</span>
+                        </a>
+
+                        <a href="#" class="resource-card">
+                            <span class="resource-symbol">TF</span>
+                            <strong>Taylor & Francis</strong>
+                            <small>Research publications</small>
+                            <span class="resource-arrow">↗</span>
+                        </a>
+
+                        <a href="#" class="resource-card">
+                            <span class="resource-symbol">E</span>
+                            <strong>Emerald</strong>
+                            <small>Business & research</small>
+                            <span class="resource-arrow">↗</span>
+                        </a>
+
+                    </div>
+
+                </div>
+
+
+                <div class="resource-category">
+
+                    <div class="resource-category-title">
+                        <span>E-BOOKS</span>
+                        <small>Digital books & academic texts</small>
+                    </div>
+
+                    <div class="resource-grid">
+
+                        <a href="#" class="resource-card">
+                            <span class="resource-symbol">S</span>
+                            <strong>Springer</strong>
+                            <small>Academic books</small>
+                            <span class="resource-arrow">↗</span>
+                        </a>
+
+                        <a href="#" class="resource-card">
+                            <span class="resource-symbol">S</span>
+                            <strong>SAGE</strong>
+                            <small>Research & textbooks</small>
+                            <span class="resource-arrow">↗</span>
+                        </a>
+
+                        <a href="#" class="resource-card">
+                            <span class="resource-symbol">M</span>
+                            <strong>McGraw Hill</strong>
+                            <small>Textbooks</small>
+                            <span class="resource-arrow">↗</span>
+                        </a>
+
+                        <a href="#" class="resource-card">
+                            <span class="resource-symbol">E</span>
+                            <strong>Elsevier</strong>
+                            <small>Science & technology</small>
+                            <span class="resource-arrow">↗</span>
+                        </a>
+
+                        <a href="#" class="resource-card">
+                            <span class="resource-symbol">W</span>
+                            <strong>Wiley</strong>
+                            <small>Academic literature</small>
+                            <span class="resource-arrow">↗</span>
+                        </a>
+
+                        <a href="#" class="resource-card">
+                            <span class="resource-symbol">PQ</span>
+                            <strong>ProQuest</strong>
+                            <small>Research resources</small>
+                            <span class="resource-arrow">↗</span>
+                        </a>
+
+                    </div>
+
+                </div>
+
+            </div>
+
+        </section>
+
+
+        <!-- =====================================================
+             LIBRARY HOURS
+        ====================================================== -->
+        <section id="hours" class="hours-section">
+
+            <div class="section-container">
+
+                <div class="hours-grid">
+
+                    <div class="hours-intro">
+
+                        <span class="section-kicker">PLAN YOUR VISIT</span>
+
+                        <h2>
+                            Library<br>
+                            Hours
+                        </h2>
+
+                        <p>
+                            Please check the schedule before visiting.
+                            Hours may change during government holidays
+                            and university closures.
+                        </p>
+
+                        <div id="openStatus" class="open-status">
+                            <span></span>
+                            <strong>Check today's status</strong>
+                        </div>
+
+                    </div>
+
+
+                    <div class="hours-list">
+
+                        <div class="hours-row">
+                            <div>
+                                <strong>Saturday – Wednesday</strong>
+                                <span>Regular hours</span>
+                            </div>
+                            <time>9:00 AM – 5:00 PM</time>
+                        </div>
+
+                        <div class="hours-row">
+                            <div>
+                                <strong>Lunch & Prayer Break</strong>
+                                <span>Closed during break</span>
+                            </div>
+                            <time>1:30 PM – 3:00 PM</time>
+                        </div>
+
+                        <div class="hours-row">
+                            <div>
+                                <strong>Reference Section</strong>
+                                <span>Extended hours</span>
+                            </div>
+                            <time>8:00 AM – 9:00 PM</time>
+                        </div>
+
+                        <div class="hours-row closed">
+                            <div>
+                                <strong>Thursday & Friday</strong>
+                                <span>Weekly holiday</span>
+                            </div>
+                            <time>Closed</time>
+                        </div>
+
+                        <div class="hours-row closed">
+                            <div>
+                                <strong>Government Holidays</strong>
+                                <span>All day</span>
+                            </div>
+                            <time>Closed</time>
+                        </div>
+
+                    </div>
+
+                </div>
+
+            </div>
+
+        </section>
+
+
+        <!-- =====================================================
+             NOTICES
+        ====================================================== -->
+        <section class="notices-section">
+
+            <div class="section-container">
+
+                <div class="section-heading">
+                    <div>
+                        <span class="section-kicker">STAY UPDATED</span>
+                        <h2>Latest Notices</h2>
+                    </div>
+                </div>
+
+
+                <div class="notices-grid">
+
+                    <article class="notice-card">
+                        <span class="notice-tag">NEW ARRIVALS</span>
+                        <h3>New books are available</h3>
+                        <p>
+                            New books in Science, Technology and
+                            Engineering sections are now available
+                            for checkout.
+                        </p>
+                    </article>
+
+                    <article class="notice-card">
+                        <span class="notice-tag">DIGITAL</span>
+                        <h3>E-Journal access update</h3>
+                        <p>
+                            Subscribed e-journals are available using
+                            your library account credentials.
+                        </p>
+                    </article>
+
+                    <article class="notice-card">
+                        <span class="notice-tag">POLICY</span>
+                        <h3>Library policies</h3>
+                        <p>
+                            Loan period is 14 days. Overdue fines
+                            accrue per day according to library policy.
+                        </p>
+                    </article>
+
+                </div>
+
+            </div>
+
+        </section>
+
+
+        <!-- =====================================================
+             CONTACT
+        ====================================================== -->
+        <section id="contact" class="contact-section">
+
+            <div class="section-container">
+
+                <div class="contact-grid">
+
+                    <div>
+                        <span class="section-kicker">NEED ASSISTANCE?</span>
+
+                        <h2>
+                            Ask the<br>
+                            Library.
+                        </h2>
+
+                        <p>
+                            Have a question about books, resources,
+                            library services or your account?
+                        </p>
+                    </div>
+
+
+                    <div class="contact-card">
+
+                        <div class="contact-item">
+                            <span>LIBRARIAN</span>
+                            <strong>Librarian (In-Charge)</strong>
+                        </div>
+
+                        <div class="contact-item">
+                            <span>EMAIL</span>
+                            <a href="mailto:library@kiu.ac.bd">
+                                library@kiu.ac.bd
+                            </a>
+                        </div>
+
+                        <div class="contact-item">
+                            <span>PHONE</span>
+                            <strong>02-9988 32221 · Ext 671</strong>
+                        </div>
+
+                        <div class="contact-item">
+                            <span>LOCATION</span>
+                            <strong>
+                                Central Library, Kishoreganj University,
+                                Gurudayal Govt. College,
+                                Kishoreganj Sadar-2300, Bangladesh
+                            </strong>
+                        </div>
+
+                    </div>
+
+                </div>
+
+            </div>
+
+        </section>
+
+
+        <!-- =====================================================
+             ABOUT
+        ====================================================== -->
+        <section id="about" class="about-section">
+
+            <div class="section-container about-grid">
+
+                <div>
+                    <span class="section-kicker">ABOUT THE LIBRARY</span>
+
+                    <h2>
+                        Supporting the
+                        KIU community.
+                    </h2>
+                </div>
+
+                <div>
+                    <p>
+                        The KIU Library provides access to knowledge,
+                        information and academic resources for the
+                        Kishoreganj University community.
+                    </p>
+
+                    <p>
+                        Use the online catalog to discover books,
+                        explore digital resources and manage your
+                        library activities.
+                    </p>
+                </div>
+
+            </div>
+
+        </section>
+
+    </main>
+
+
+    <!-- =========================================================
+         FOOTER
+    ========================================================== -->
+    <footer class="site-footer">
+
+        <div class="footer-container">
+
+            <div class="footer-main">
+
+                <div class="footer-brand">
+
+                    <div class="footer-logo">
+                        <img src="./kiu_logo.png" alt="KIU">
+                    </div>
+
+                    <div>
+                        <h3>KIU Library</h3>
+                        <p>
+                            Knowledge · Information · Understanding
+                        </p>
+                    </div>
+
+                </div>
+
+                <p class="footer-description">
+                    Providing access to knowledge and information
+                    resources for the Kishoreganj University community.
+                </p>
+
+            </div>
+
+
+            <div class="footer-column">
+                <h4>Explore</h4>
+
+                <a href="#catalog">Catalog</a>
+                <a href="#resources">Digital Resources</a>
+                <a href="#services">Services</a>
+                <a href="#hours">Library Hours</a>
+            </div>
+
+
+            <div class="footer-column">
+                <h4>Account</h4>
+
+                <a href="login.html">Sign in</a>
+                <a href="dashboard.html">My Library</a>
+                <a href="#contact">Ask the Library</a>
+            </div>
+
+
+            <div class="footer-column">
+                <h4>Contact</h4>
+
+                <a href="mailto:library@kiu.ac.bd">
+                    library@kiu.ac.bd
+                </a>
+
+                <span>
+                    02-9988 32221
+                </span>
+
+                <span>
+                    Kishoreganj, Bangladesh
+                </span>
+            </div>
+
+        </div>
+
+
+        <div class="footer-bottom">
+
+            <span>
+                © 2026 Kishoreganj University Library
+            </span>
+
+            <span>
+                All rights reserved.
+            </span>
+
+        </div>
+
+    </footer>
+    <!-- BRAND INFORMATION MODAL -->
+
+    <div id="brandInfoModal" class="brand-modal hidden">
+
+        <div class="brand-modal-overlay" id="brandModalOverlay"></div>
+
+        <div class="brand-modal-box">
+
+            <button
+                id="closeBrandModal"
+                class="brand-modal-close"
+                type="button"
+            >
+                ×
+            </button>
+
+            <span id="brandModalLabel" class="section-kicker">
+                KIU LIBRARY
+            </span>
+
+            <h2 id="brandModalTitle">
+                Knowledge
+            </h2>
+
+            <div id="brandModalContent"></div>
+
+            <button
+                id="brandModalAction"
+                class="brand-modal-action"
+                type="button"
+            >
+                Explore the Library →
+            </button>
+
+        </div>
+
+    </div>
+    <script src="js/auth.js"></script>
+    <script src="js/index.js"></script>
+
 </body>
+
 </html>

@@ -25,7 +25,7 @@
   <link rel="stylesheet" href="css/styles.css" />
 </head>
 
-<body class="paper-texture min-h-screen bg-gray-50 flex flex-col">
+<body class="dashboard-atmosphere min-h-screen flex flex-col">
 
   <header class="bg-white border-b border-ink/10 shadow-sm sticky top-0 z-50">
     <div class="max-w-7xl mx-auto px-4 sm:px-6 py-4">
@@ -61,7 +61,7 @@
   </header>
 
   <!-- Main Container -->
-  <div class="flex flex-1 min-h-0 relative">
+  <div class="dashboard-shell flex flex-1 min-h-0 relative">
     
     <!-- Mobile sidebar overlay -->
     <div id="sidebarOverlay" class="fixed inset-0 bg-black/50 z-40 hidden sm:hidden"></div>
@@ -93,11 +93,11 @@
     </nav>
 
     <!-- Main Content Wrapper -->
-    <div class="flex-1 flex flex-col min-w-0">
-      <main class="flex-1 max-w-7xl mx-auto px-4 sm:px-6 py-6 sm:py-8 w-full">
+    <div class="flex-1 flex flex-col min-w-0 " >
+      <main class="flex-1 max-w-7xl mx-auto px-4 sm:px-6 py-6 sm:py-8 w-full ">
         
         <!-- BROWSE VIEW -->
-        <section id="view-browse" class="view-panel bg-white rounded-lg p-5 sm:p-8 border border-ink/10 shadow-md">
+        <section id="view-browse" class="view-panel catalog-panel rounded-lg p-5 sm:p-8 border border-ink/10 shadow-md ">
           <div class="flex flex-col sm:flex-row sm:items-end justify-between gap-4 mb-6">
             <div>
               <p class="font-mono text-xs tracking-[0.2em] text-brass uppercase mb-1">Card Catalog</p>
@@ -110,7 +110,7 @@
     placeholder="Search by title, author, or ISBN…"
     class="flex-1 border border-ink/15 rounded px-4 py-2.5 bg-white focus:outline-none focus:ring-2 focus:ring-brass" />
 
-  <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+  <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 ">
 
     <!-- Author -->
     <select id="authorFilter"
