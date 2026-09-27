@@ -613,10 +613,9 @@ input {
 
 .intro-text p {
     margin: 0 0 20px;
-
     color: #526577;
-
     font-size: 16px;
+    text-align: justify;
 }
 
 .text-link {
