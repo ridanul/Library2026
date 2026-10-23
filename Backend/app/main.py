@@ -1058,7 +1058,24 @@ def frontend_root():
 def frontend_index_page():
     return _serve_frontend_page("index.html")
 
+@app.get("/services.html")
+def frontend_services_page():
+    return _serve_frontend_page("services.html")
 
+
+@app.get("/resources.html")
+def frontend_resources_page():
+    return _serve_frontend_page("resources.html")
+
+
+@app.get("/notices.html")
+def frontend_notices_page():
+    return _serve_frontend_page("notices.html")
+
+
+@app.get("/contact.html")
+def frontend_contact_page():
+    return _serve_frontend_page("contact.html")
 @app.get("/login.html")
 def frontend_login_page():
     return _serve_frontend_page("login.html")
