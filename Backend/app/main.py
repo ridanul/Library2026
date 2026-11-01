@@ -1023,8 +1023,10 @@ async def upload_cover(
 # Optionally serve static frontend assets/pages from the same process.
 # By default this points at the dedicated "frontend/" folder in repo root.
 # ===========================================================================
-_repo_root = Path(__file__).resolve().parents[2]
-_frontend_dir = Path(os.getenv("FRONTEND_DIR", str(_repo_root / "frontend"))).resolve()
+# Backend/app/main.py:
+# .parents[0] is app, .parents[1] is Backend, .parents[2] is Library2026 (repo root)
+_repo_root = Path(__file__).resolve().parent.parent.parent
+_frontend_dir = (_repo_root / "frontend").resolve()
 
 
 def _frontend_file(name: str) -> Path:

@@ -196,7 +196,73 @@
 
         </section>
 
+       <!-- Insert before the <footer> in index.html -->
+<section class="stats-banner">
+  <div class="stat-item">
+    <h3>1,000+</h3>
+    <p>Print Books</p>
+  </div>
+  <div class="stat-item">
+    <h3>600+</h3>
+    <p>Active Students</p>
+  </div>
+  <div class="stat-item">
+    <h3>24/7</h3>
+    <p>Digital Access</p>
+  </div>
+</section>
 
+<section class="featured-catalog">
+  <div class="section-header">
+    <span class="sub-title">CURATED SELECTION</span>
+    <h2>Trending Academic Books</h2>
+  </div>
+
+  <div class="filter-tabs">
+    <button class="tab-btn active" onclick="filterBooks('all')">All</button>
+    <button class="tab-btn" onclick="filterBooks('cse')">Computer Science</button>
+    <button class="tab-btn" onclick="filterBooks('math')">Mathematics</button>
+    <button class="tab-btn" onclick="filterBooks('business')">Business</button>
+  </div>
+
+  <div class="book-grid" id="bookGrid">
+    <!-- Card 1 -->
+    <div class="book-card" data-category="cse">
+      <div class="badge available">Available (4 copies)</div>
+      <div class="book-cover-placeholder">CS</div>
+      <h4>Introduction to Algorithms (CLRS)</h4>
+      <p class="author">Thomas H. Cormen</p>
+      <div class="book-meta">
+        <span>Call No: QA76.6 .C662</span>
+      </div>
+      <button class="btn-borrow" onclick="borrowBook('CLRS')">Borrow / Reserve</button>
+    </div>
+
+    <!-- Card 2 -->
+    <div class="book-card" data-category="cse">
+      <div class="badge available">Available (2 copies)</div>
+      <div class="book-cover-placeholder">PY</div>
+      <h4>Python Crash Course</h4>
+      <p class="author">Eric Matthes</p>
+      <div class="book-meta">
+        <span>Call No: QA76.73 .P98</span>
+      </div>
+      <button class="btn-borrow" onclick="borrowBook('Python Crash Course')">Borrow / Reserve</button>
+    </div>
+
+    <!-- Card 3 -->
+    <div class="book-card" data-category="math">
+      <div class="badge reserved">Checked Out</div>
+      <div class="book-cover-placeholder">MA</div>
+      <h4>Calculus: Early Transcendentals</h4>
+      <p class="author">James Stewart</p>
+      <div class="book-meta">
+        <span>Due: Nov 05, 2026</span>
+      </div>
+      <button class="btn-borrow secondary" onclick="reserveBook('Calculus')">Place Hold</button>
+    </div>
+  </div>
+</section>
         <!-- =====================================================
              SERVICES
         ====================================================== -->
@@ -233,7 +299,7 @@
         
 
     </main>
-
+  
 
     <!-- =========================================================
          FOOTER
