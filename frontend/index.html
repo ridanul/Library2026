@@ -13,6 +13,54 @@
 
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="js/tailwind.config.js"></script>
+
+    <style>
+        .modal-overlay {
+            display: none;
+            position: fixed;
+            inset: 0;
+            background: rgba(0, 0, 0, 0.5);
+            backdrop-filter: blur(4px);
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+        }
+        .modal-content {
+            background: #fff;
+            padding: 24px;
+            border-radius: 10px;
+            width: 90%;
+            max-width: 500px;
+            position: relative;
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.2);
+        }
+        .close-btn {
+            position: absolute;
+            top: 12px;
+            right: 16px;
+            background: none;
+            border: none;
+            font-size: 22px;
+            cursor: pointer;
+        }
+        .modal-body {
+            display: flex;
+            gap: 20px;
+            align-items: center;
+        }
+        .modal-cover-placeholder {
+            width: 110px;
+            height: 150px;
+            background: #e2e8f0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            font-size: 24px;
+            border-radius: 6px;
+            flex-shrink: 0;
+        }
+    </style>
 </head>
 
 <body>
@@ -21,47 +69,35 @@
          HEADER
     ========================================================== -->
     <header class="site-header">
-    <div class="nav-container">
+        <div class="nav-container">
 
-        <div class="brand">
+            <div class="brand">
+                <a href="index.html" class="brand-home">
+                    <img src="./kiu_logo.png" alt="Kishoreganj University Logo">
+                    <div class="brand-text">
+                        <span class="brand-title">KIU Library</span>
+                    </div>
+                </a>
+            </div>
 
-            <a href="index.html" class="brand-home">
-                <img src="./kiu_logo.png" alt="Kishoreganj University Logo">
+            <button id="mobileMenuBtn" class="mobile-menu-btn" aria-label="Open menu">
+                ☰
+            </button>
 
-                <div class="brand-text">
-                    <span class="brand-title">KIU Library</span>
-                </div>
-            </a>
+            <nav id="mainNav" class="main-nav">
+                <a href="index.html">Home</a>
+                <a href="services.html">Services</a>
+                <a href="resources.html">Resources</a>
+                <a href="notices.html">Notices</a>
+                <a href="contact.html">Contact</a>
+                <a href="login.html" class="nav-login" id="authNavLink">
+                    Sign in
+                </a>
+            </nav>
 
-            
         </div>
+    </header>
 
-        <button id="mobileMenuBtn" class="mobile-menu-btn" aria-label="Open menu">
-            ☰
-        </button>
-
-        <nav id="mainNav" class="main-nav">
-
-    <a href="index.html">Home</a>
-
-    <a href="services.html">Services</a>
-
-    <a href="resources.html">Resources</a>
-
-    <a href="notices.html">Notices</a>
-
-    <a href="contact.html">Contact</a>
-
-    <a href="login.html"
-       class="nav-login"
-       id="authNavLink">
-        Sign in
-    </a>
-
-</nav>
-
-    </div>
-</header>
     <!-- =========================================================
          HERO
     ========================================================== -->
@@ -87,7 +123,6 @@
 
                 <!-- Search -->
                 <form id="landingSearch" class="library-search">
-
                     <div class="search-icon">
                         🔍
                     </div>
@@ -103,7 +138,6 @@
                     <button type="submit">
                         Search
                     </button>
-
                 </form>
 
                 <div class="search-hints">
@@ -117,7 +151,6 @@
             </div>
 
         </section>
-
 
         <!-- =====================================================
              QUICK ACCESS
@@ -157,7 +190,6 @@
 
         </section>
 
-
         <!-- =====================================================
              LIBRARY INTRO
         ====================================================== -->
@@ -196,110 +228,77 @@
 
         </section>
 
-       <!-- Insert before the <footer> in index.html -->
-<section class="stats-banner">
-  <div class="stat-item">
-    <h3>1,000+</h3>
-    <p>Print Books</p>
-  </div>
-  <div class="stat-item">
-    <h3>600+</h3>
-    <p>Active Students</p>
-  </div>
-  <div class="stat-item">
-    <h3>24/7</h3>
-    <p>Digital Access</p>
-  </div>
-</section>
-
-<section class="featured-catalog">
-  <div class="section-header">
-    <span class="sub-title">CURATED SELECTION</span>
-    <h2>Trending Academic Books</h2>
-  </div>
-
-  <div class="filter-tabs">
-    <button class="tab-btn active" onclick="filterBooks('all')">All</button>
-    <button class="tab-btn" onclick="filterBooks('cse')">Computer Science</button>
-    <button class="tab-btn" onclick="filterBooks('math')">Mathematics</button>
-    <button class="tab-btn" onclick="filterBooks('business')">Business</button>
-  </div>
-
-  <div class="book-grid" id="bookGrid">
-    <!-- Card 1 -->
-    <div class="book-card" data-category="cse">
-      <div class="badge available">Available (4 copies)</div>
-      <div class="book-cover-placeholder">CS</div>
-      <h4>Introduction to Algorithms (CLRS)</h4>
-      <p class="author">Thomas H. Cormen</p>
-      <div class="book-meta">
-        <span>Call No: QA76.6 .C662</span>
-      </div>
-      <button class="btn-borrow" onclick="borrowBook('CLRS')">Borrow / Reserve</button>
-    </div>
-
-    <!-- Card 2 -->
-    <div class="book-card" data-category="cse">
-      <div class="badge available">Available (2 copies)</div>
-      <div class="book-cover-placeholder">PY</div>
-      <h4>Python Crash Course</h4>
-      <p class="author">Eric Matthes</p>
-      <div class="book-meta">
-        <span>Call No: QA76.73 .P98</span>
-      </div>
-      <button class="btn-borrow" onclick="borrowBook('Python Crash Course')">Borrow / Reserve</button>
-    </div>
-
-    <!-- Card 3 -->
-    <div class="book-card" data-category="math">
-      <div class="badge reserved">Checked Out</div>
-      <div class="book-cover-placeholder">MA</div>
-      <h4>Calculus: Early Transcendentals</h4>
-      <p class="author">James Stewart</p>
-      <div class="book-meta">
-        <span>Due: Nov 05, 2026</span>
-      </div>
-      <button class="btn-borrow secondary" onclick="reserveBook('Calculus')">Place Hold</button>
-    </div>
-  </div>
-</section>
         <!-- =====================================================
-             SERVICES
+             STATS & FEATURED CATALOG
         ====================================================== -->
-        
+        <section class="stats-banner">
+            <div class="stat-item">
+                <h3>1,000+</h3>
+                <p>Print Books</p>
+            </div>
+            <div class="stat-item">
+                <h3>600+</h3>
+                <p>Active Students</p>
+            </div>
+            <div class="stat-item">
+                <h3>24/7</h3>
+                <p>Digital Access</p>
+            </div>
+        </section>
 
+        <section class="featured-catalog">
+            <div class="section-header">
+                <span class="sub-title">CURATED SELECTION</span>
+                <h2>Trending Academic Books</h2>
+            </div>
 
-        <!-- =====================================================
-             DIGITAL RESOURCES
-        ====================================================== -->
-        
+            <div class="filter-tabs">
+                <button class="tab-btn active" onclick="filterBooks('all')">All</button>
+                <button class="tab-btn" onclick="filterBooks('cse')">Computer Science</button>
+                <button class="tab-btn" onclick="filterBooks('math')">Mathematics</button>
+                <button class="tab-btn" onclick="filterBooks('business')">Business</button>
+            </div>
 
+            <div class="book-grid" id="bookGrid">
+                <!-- Card 1 -->
+                <div class="book-card" data-category="cse" onclick="openBookModal('Introduction to Algorithms (CLRS)', 'Thomas H. Cormen', 'QA76.6 .C662', 'Available (4 copies)', 'CS', 'available')" style="cursor: pointer;">
+                    <div class="badge available">Available (4 copies)</div>
+                    <div class="book-cover-placeholder">CS</div>
+                    <h4>Introduction to Algorithms (CLRS)</h4>
+                    <p class="author">Thomas H. Cormen</p>
+                    <div class="book-meta">
+                        <span>Call No: QA76.6 .C662</span>
+                    </div>
+                    <button class="btn-borrow" onclick="event.stopPropagation(); borrowBook('Introduction to Algorithms (CLRS)')">Borrow / Reserve</button>
+                </div>
 
-        <!-- =====================================================
-             LIBRARY HOURS
-        ====================================================== -->
-        
+                <!-- Card 2 -->
+                <div class="book-card" data-category="cse" onclick="openBookModal('Python Crash Course', 'Eric Matthes', 'QA76.73 .P98', 'Available (2 copies)', 'PY', 'available')" style="cursor: pointer;">
+                    <div class="badge available">Available (2 copies)</div>
+                    <div class="book-cover-placeholder">PY</div>
+                    <h4>Python Crash Course</h4>
+                    <p class="author">Eric Matthes</p>
+                    <div class="book-meta">
+                        <span>Call No: QA76.73 .P98</span>
+                    </div>
+                    <button class="btn-borrow" onclick="event.stopPropagation(); borrowBook('Python Crash Course')">Borrow / Reserve</button>
+                </div>
 
-
-        <!-- =====================================================
-             NOTICES
-        ====================================================== -->
-        
-
-
-        <!-- =====================================================
-             CONTACT
-        ====================================================== -->
-        
-
-
-        <!-- =====================================================
-             ABOUT
-        ====================================================== -->
-        
+                <!-- Card 3 -->
+                <div class="book-card" data-category="math" onclick="openBookModal('Calculus: Early Transcendentals', 'James Stewart', 'Due: Nov 05, 2026', 'Checked Out', 'MA', 'reserved')" style="cursor: pointer;">
+                    <div class="badge reserved">Checked Out</div>
+                    <div class="book-cover-placeholder">MA</div>
+                    <h4>Calculus: Early Transcendentals</h4>
+                    <p class="author">James Stewart</p>
+                    <div class="book-meta">
+                        <span>Due: Nov 05, 2026</span>
+                    </div>
+                    <button class="btn-borrow secondary" onclick="event.stopPropagation(); reserveBook('Calculus: Early Transcendentals')">Place Hold</button>
+                </div>
+            </div>
+        </section>
 
     </main>
-  
 
     <!-- =========================================================
          FOOTER
@@ -332,37 +331,29 @@
 
             </div>
 
-
             <div class="footer-column">
                 <h4>Explore</h4>
-
                 <a href="#catalog">Catalog</a>
                 <a href="#resources">Digital Resources</a>
                 <a href="#services">Services</a>
                 <a href="#hours">Library Hours</a>
             </div>
 
-
             <div class="footer-column">
                 <h4>Account</h4>
-
                 <a href="login.html">Sign in</a>
                 <a href="dashboard.html">My Library</a>
                 <a href="#contact">Ask the Library</a>
             </div>
 
-
             <div class="footer-column">
                 <h4>Contact</h4>
-
                 <a href="mailto:library@kiu.ac.bd">
                     library@kiu.ac.bd
                 </a>
-
                 <span>
                     02-9988 32221
                 </span>
-
                 <span>
                     Kishoreganj, Bangladesh
                 </span>
@@ -370,22 +361,18 @@
 
         </div>
 
-
         <div class="footer-bottom">
-
             <span>
                 © 2026 Kishoreganj University Library
             </span>
-
             <span>
                 All rights reserved.
             </span>
-
         </div>
 
     </footer>
-    <!-- BRAND INFORMATION MODAL -->
 
+    <!-- BRAND INFORMATION MODAL -->
     <div id="brandInfoModal" class="brand-modal hidden">
 
         <div class="brand-modal-overlay" id="brandModalOverlay"></div>
@@ -421,8 +408,79 @@
         </div>
 
     </div>
+
+    <!-- BOOK DETAILS MODAL -->
+    <div id="bookModal" class="modal-overlay" onclick="closeBookModal()">
+        <div class="modal-content" onclick="event.stopPropagation()">
+            <button class="close-btn" type="button" onclick="closeBookModal()">&times;</button>
+            <div class="modal-body">
+                <div id="modalCover" class="modal-cover-placeholder">CS</div>
+                <div class="modal-details">
+                    <h3 id="modalTitle">Book Title</h3>
+                    <p id="modalAuthor" class="author">Author Name</p>
+                    <p id="modalCallNo" class="meta">Call No: ...</p>
+                    <span id="modalBadge" class="badge available">Available</span>
+                    <button id="modalBorrowBtn" class="btn-borrow" type="button" style="margin-top: 15px;">Borrow / Reserve</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <script src="js/auth.js"></script>
     <script src="js/index.js"></script>
+
+    <script>
+        function openBookModal(title, author, metaText, statusText, coverText, statusClass) {
+            document.getElementById('modalTitle').textContent = title;
+            document.getElementById('modalAuthor').textContent = author;
+            document.getElementById('modalCallNo').textContent = metaText.startsWith('Due:') ? metaText : 'Call No: ' + metaText;
+
+            const badge = document.getElementById('modalBadge');
+            badge.textContent = statusText;
+            badge.className = 'badge ' + statusClass;
+
+            document.getElementById('modalCover').textContent = coverText;
+
+            const actionBtn = document.getElementById('modalBorrowBtn');
+            if (statusClass === 'reserved') {
+                actionBtn.textContent = 'Place Hold';
+                actionBtn.className = 'btn-borrow secondary';
+                actionBtn.onclick = function () {
+                    reserveBook(title);
+                };
+            } else {
+                actionBtn.textContent = 'Borrow / Reserve';
+                actionBtn.className = 'btn-borrow';
+                actionBtn.onclick = function () {
+                    borrowBook(title);
+                };
+            }
+
+            document.getElementById('bookModal').style.display = 'flex';
+        }
+
+        function closeBookModal() {
+            document.getElementById('bookModal').style.display = 'none';
+        }
+
+        document.addEventListener('keydown', function (event) {
+            if (event.key === 'Escape') {
+                closeBookModal();
+            }
+        });
+
+        if (typeof window.borrowBook !== 'function') {
+            window.borrowBook = function (title) {
+                window.location.href = 'dashboard.html?borrow=' + encodeURIComponent(title);
+            };
+        }
+
+        if (typeof window.reserveBook !== 'function') {
+            window.reserveBook = function (title) {
+                window.location.href = 'dashboard.html?reserve=' + encodeURIComponent(title);
+            };
+        }
+    </script>
 
 </body>
 

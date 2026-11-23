@@ -686,6 +686,19 @@ def borrow_book(book_id: str, db: Session = Depends(get_db), current_user: model
         raise HTTPException(status_code=403, detail="Admin accounts cannot borrow books.")
     if book.available < 1:
         raise HTTPException(status_code=400, detail="No copies available.")
+
+    # Check if the user already has an unreturned book
+    active_borrow = (
+        db.query(models.Borrow)
+        .filter(models.Borrow.user_id == current_user.id, models.Borrow.returned_at.is_(None))
+        .first()
+    )
+    if active_borrow:
+        raise HTTPException(
+            status_code=400,
+            detail="You already have an active borrowed book. Please return it before borrowing another.",
+        )
+
     book.available -= 1
     db.add(models.Borrow(user_id=current_user.id, book_id=book.id))
     db.commit()
@@ -1084,9 +1097,12 @@ def frontend_login_page():
 
 
 @app.get("/dashboard.html")
-def frontend_dashboard_page():
+async def dashboard():
     return _serve_frontend_page("dashboard.html")
 
+@app.get("/book.html")
+async def book_page():
+    return _serve_frontend_page("book.html")
 
 @app.get("/favicon.ico")
 def frontend_favicon():
