@@ -189,3 +189,4 @@ git push heroku main
 ## Design Notes
 
 Visual language borrows from library card catalogs and due-date ink stamps: navy/parchment/brass palette, a serif display face (Fraunces) for headings, and monospaced call-number/date labels (IBM Plex Mono) throughout. The recurring "stamp" badge (rotated, dashed border) marks availability status and interest tags — the one signature element the rest of the UI stays quiet around.
+Mehedi is a collaborator.

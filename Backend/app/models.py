@@ -71,6 +71,20 @@ class Borrow(Base):
     book = relationship("Book", back_populates="borrows")
 
 
+class BorrowRequest(Base):
+    __tablename__ = "borrow_requests"
+
+    id = Column(String, primary_key=True, default=lambda: gen_id("breq"))
+    user_id = Column(String, ForeignKey("users.id"), nullable=False)
+    book_id = Column(String, ForeignKey("books.id"), nullable=False)
+    status = Column(String, nullable=False, default="pending")  # pending | approved | rejected
+    requested_at = Column(Date, default=date.today)
+    resolved_at = Column(Date, nullable=True)
+
+    user = relationship("User")
+    book = relationship("Book")
+
+
 class Notification(Base):
     __tablename__ = "notifications"
 
