@@ -14,11 +14,45 @@ body { font-family: 'IBM Plex Sans', sans-serif; background-color: var(--parchme
 .font-display { font-family: 'Fraunces', serif; }
 .font-mono { font-family: 'IBM Plex Mono', monospace; }
 
-/* Faint paper grain so the parchment background isn't flat */
-.paper-texture {
+/* Layered reading-room backdrop keeps the catalog panels visually anchored. */
+.dashboard-atmosphere {
+  background-color: #172b3a;
   background-image:
-    radial-gradient(circle at 1px 1px, rgba(27,42,74,0.05) 1px, transparent 0);
-  background-size: 22px 22px;
+    radial-gradient(circle at 50% 8%, rgba(243, 237, 225, 0.98) 0, rgba(243, 237, 225, 0.78) 28%, rgba(243, 237, 225, 0.18) 58%, transparent 78%),
+    linear-gradient(135deg, rgba(16, 42, 67, 0.96), rgba(41, 63, 70, 0.88)),
+    radial-gradient(circle at 1px 1px, rgba(255, 255, 255, 0.09) 1px, transparent 0);
+  background-size: auto, auto, 24px 24px;
+  background-attachment: fixed;
+}
+
+.dashboard-shell {
+  background:
+    linear-gradient(90deg, rgba(16, 42, 67, 0.18), transparent 18%, transparent 82%, rgba(16, 42, 67, 0.18)),
+    rgba(232, 223, 204, 0.42);
+}
+
+.catalog-panel {
+  position: relative;
+  overflow: hidden;
+  background:
+    linear-gradient(115deg, rgba(255, 255, 255, 0.94), rgba(243, 237, 225, 0.9)),
+    var(--parchment);
+  border-top: 3px solid var(--brass);
+  box-shadow: 0 18px 45px rgba(16, 42, 67, 0.16), inset 0 1px 0 rgba(255, 255, 255, 0.85);
+}
+
+.catalog-panel::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background-image: radial-gradient(circle at 1px 1px, rgba(184, 137, 74, 0.08) 1px, transparent 0);
+  background-size: 20px 20px;
+  opacity: 0.7;
+}
+
+.catalog-panel > * {
+  position: relative;
 }
 
 /* Signature element: an ink due-date stamp used for statuses & accents */
@@ -76,4 +110,277 @@ body { font-family: 'IBM Plex Sans', sans-serif; background-color: var(--parchme
 
 @media (prefers-reduced-motion: reduce) {
   * { animation-duration: 0.001ms !important; transition-duration: 0.001ms !important; }
+}
+/* Stats Bar */
+.stats-banner {
+  display: flex;
+  justify-content: space-around;
+  background: #0f2744;
+  color: #fff;
+  padding: 35px 20px;
+  text-align: center;
+  border-top: 1px solid rgba(255,255,255,0.1);
+}
+.stat-item h3 { font-size: 2rem; color: #f5b041; margin-bottom: 5px; }
+.stat-item p { font-size: 0.9rem; color: #cbd5e1; }
+
+/* Catalog / Cards */
+.featured-catalog, .services-container, .notices-section {
+  max-width: 1200px;
+  margin: 50px auto;
+  padding: 0 20px;
+}
+.book-grid, .services-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 25px;
+  margin-top: 25px;
+}
+.book-card, .service-detail-card, .db-card {
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  padding: 22px;
+  box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05);
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+}
+.book-card:hover, .service-detail-card:hover {
+  transform: translateY(-4px);
+  transition: all 0.2s ease-in-out;
+  box-shadow: 0 10px 15px -3px rgba(0,0,0,0.1);
+}
+.book-cover-placeholder {
+  height: 120px;
+  background: #f1f5f9;
+  color: #64748b;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.5rem;
+  font-weight: bold;
+  border-radius: 4px;
+  margin-bottom: 12px;
+}
+.badge {
+  display: inline-block;
+  font-size: 0.75rem;
+  font-weight: 600;
+  padding: 3px 8px;
+  border-radius: 4px;
+  margin-bottom: 10px;
+  width: fit-content;
+}
+.badge.available { background: #dcfce7; color: #15803d; }
+.badge.reserved { background: #fee2e2; color: #b91c1c; }
+
+/* Buttons */
+.btn-borrow, .btn-db, .btn-book-room {
+  background: #0f2744;
+  color: #fff;
+  border: none;
+  padding: 10px 16px;
+  border-radius: 5px;
+  font-weight: 600;
+  cursor: pointer;
+  margin-top: 15px;
+  text-align: center;
+  text-decoration: none;
+}
+.btn-borrow:hover, .btn-book-room:hover { background: #1e3a5f; }
+
+/* Notices Timeline */
+.notice-entry {
+  display: flex;
+  gap: 20px;
+  align-items: flex-start;
+  padding: 20px;
+  border-bottom: 1px solid #e2e8f0;
+  background: #fff;
+}
+.notice-entry.pinned { border-left: 4px solid #f5b041; }
+.notice-date {
+  background: #0f2744;
+  color: #fff;
+  padding: 10px 15px;
+  border-radius: 6px;
+  text-align: center;
+  min-width: 60px;
+}
+.notice-date .day { font-size: 1.3rem; font-weight: bold; display: block; }
+.notice-date .month { font-size: 0.75rem; text-transform: uppercase; }
+/* ==========================================================================
+   Modern Services Section Styling
+   ========================================================================== */
+
+.services-page-wrap {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 48px 24px 80px;
+  font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  color: #1e293b;
+}
+
+.services-hero {
+  margin-bottom: 40px;
+}
+
+.hero-tag {
+  display: inline-block;
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  color: #d97706;
+  text-transform: uppercase;
+  margin-bottom: 8px;
+}
+
+.services-hero h1 {
+  font-size: 2rem;
+  font-weight: 800;
+  color: #0f2744;
+  margin: 0 0 10px;
+}
+
+.services-hero p {
+  color: #64748b;
+  font-size: 1rem;
+  margin: 0;
+  max-width: 600px;
+}
+
+/* Card Grid Layout */
+.services-card-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+  gap: 28px;
+  align-items: stretch;
+}
+
+/* Card Container */
+.service-card {
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  padding: 32px 28px;
+  display: flex;
+  flex-direction: column;
+  transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
+}
+
+.service-card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 12px 24px -4px rgba(15, 39, 68, 0.1);
+  border-color: #cbd5e1;
+}
+
+.service-card.highlight {
+  border-color: #93c5fd;
+  background: linear-gradient(180deg, #ffffff 0%, #f8fafc 100%);
+}
+
+/* Icons */
+.card-icon-box {
+  width: 52px;
+  height: 52px;
+  border-radius: 10px;
+  background: #f1f5f9;
+  color: #0f2744;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 20px;
+}
+
+.card-icon-box.accent {
+  background: #0f2744;
+  color: #f5b041;
+}
+
+.service-card h3 {
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: #0f2744;
+  margin: 0 0 12px;
+}
+
+.card-desc {
+  font-size: 0.92rem;
+  line-height: 1.55;
+  color: #64748b;
+  margin: 0 0 20px;
+}
+
+/* Features List */
+.card-checklist {
+  list-style: none;
+  padding: 0;
+  margin: 0 0 28px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  flex-grow: 1;
+}
+
+.card-checklist li {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 0.88rem;
+  color: #334155;
+}
+
+.check-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: #ecfdf5;
+  color: #059669;
+  font-size: 0.72rem;
+  font-weight: bold;
+}
+
+/* Actions */
+.card-footer {
+  margin-top: auto;
+}
+
+.card-btn {
+  display: block;
+  width: 100%;
+  text-align: center;
+  padding: 12px 18px;
+  font-size: 0.9rem;
+  font-weight: 600;
+  border-radius: 8px;
+  cursor: pointer;
+  text-decoration: none;
+  box-sizing: border-box;
+  transition: all 0.2s ease;
+  border: 1px solid transparent;
+}
+
+.card-btn.primary {
+  background: #0f2744;
+  color: #ffffff;
+}
+
+.card-btn.primary:hover {
+  background: #1e3a5f;
+}
+
+.card-btn.secondary {
+  background: #f8fafc;
+  color: #0f2744;
+  border: 1px solid #cbd5e1;
+}
+
+.card-btn.secondary:hover {
+  background: #f1f5f9;
+  border-color: #94a3b8;
 }

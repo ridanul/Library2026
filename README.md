@@ -40,7 +40,7 @@ library-app/
 
 ### Setup
 
-```bash
+
 # 1. Clone and enter the project
 git clone https://github.com/ridanul/Library2026.git
 cd Library2026
@@ -50,7 +50,7 @@ python3 -m venv venv
 source venv/bin/activate        # Windows: venv\Scripts\activate
 
 # 3. Install dependencies
-pip install -r requirements.txt
+
 
 # 4. Configure environment variables
 cp Backend/.env.example Backend/.env

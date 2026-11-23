@@ -1181,8 +1181,10 @@ async def upload_cover(
 # Optionally serve static frontend assets/pages from the same process.
 # By default this points at the dedicated "frontend/" folder in repo root.
 # ===========================================================================
-_repo_root = Path(__file__).resolve().parents[2]
-_frontend_dir = Path(os.getenv("FRONTEND_DIR", str(_repo_root / "frontend"))).resolve()
+# Backend/app/main.py:
+# .parents[0] is app, .parents[1] is Backend, .parents[2] is Library2026 (repo root)
+_repo_root = Path(__file__).resolve().parent.parent.parent
+_frontend_dir = (_repo_root / "frontend").resolve()
 
 
 def _frontend_file(name: str) -> Path:
@@ -1216,16 +1218,36 @@ def frontend_root():
 def frontend_index_page():
     return _serve_frontend_page("index.html")
 
+@app.get("/services.html")
+def frontend_services_page():
+    return _serve_frontend_page("services.html")
 
+
+@app.get("/resources.html")
+def frontend_resources_page():
+    return _serve_frontend_page("resources.html")
+
+
+@app.get("/notices.html")
+def frontend_notices_page():
+    return _serve_frontend_page("notices.html")
+
+
+@app.get("/contact.html")
+def frontend_contact_page():
+    return _serve_frontend_page("contact.html")
 @app.get("/login.html")
 def frontend_login_page():
     return _serve_frontend_page("login.html")
 
 
 @app.get("/dashboard.html")
-def frontend_dashboard_page():
+async def dashboard():
     return _serve_frontend_page("dashboard.html")
 
+@app.get("/book.html")
+async def book_page():
+    return _serve_frontend_page("book.html")
 
 @app.get("/favicon.ico")
 def frontend_favicon():

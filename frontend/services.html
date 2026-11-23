@@ -1,0 +1,329 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <title>Library Services | KIU Library</title>
+
+    <link rel="icon" href="./kiu_logo.png">
+
+    <link rel="stylesheet" href="css/index.css">
+    <link rel="stylesheet" href="css/styles.css">
+
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="js/tailwind.config.js"></script>
+</head>
+
+<body>
+
+    <!-- HEADER -->
+    <header class="site-header">
+        <div class="nav-container">
+
+            <div class="brand">
+
+                <a href="index.html" class="brand-home">
+                    <img
+                        src="./kiu_logo.png"
+                        alt="Kishoreganj University Logo"
+                    >
+
+                    <div class="brand-text">
+                        <span class="brand-title">
+                            KIU Library
+                        </span>
+                    </div>
+                </a>
+
+                <div class="brand-subtitle">
+
+                    <button
+                        type="button"
+                        class="brand-link"
+                        data-info="knowledge"
+                    >
+                        Knowledge
+                    </button>
+
+                    <span>·</span>
+
+                    <button
+                        type="button"
+                        class="brand-link"
+                        data-info="information"
+                    >
+                        Information
+                    </button>
+
+                    <span>·</span>
+
+                    <button
+                        type="button"
+                        class="brand-link"
+                        data-info="understanding"
+                    >
+                        Understanding
+                    </button>
+
+                </div>
+
+            </div>
+
+
+            <nav id="mainNav" class="main-nav">
+
+                <a href="index.html">
+                    Home
+                </a>
+
+                <a href="services.html">
+                    Services
+                </a>
+
+                <a href="resources.html">
+                    Resources
+                </a>
+
+                <a href="notices.html">
+                    Notices
+                </a>
+
+                <a href="contact.html">
+                    Contact
+                </a>
+
+                <a
+                    href="login.html"
+                    class="nav-login"
+                    id="authNavLink"
+                >
+                    Sign in
+                </a>
+
+            </nav>
+
+        </div>
+    </header>
+
+
+    <!-- SERVICES PAGE -->
+   <main class="services-page-wrap">
+  <div class="services-hero">
+    <span class="hero-tag">WHAT WE OFFER</span>
+    <h1>Academic &amp; Research Services</h1>
+    <p>Comprehensive library facilities designed to support academic excellence and research.</p>
+  </div>
+
+  <div class="services-card-grid">
+    <!-- Card 1 -->
+    <div class="service-card">
+      <div class="card-icon-box">
+        <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"></path>
+          <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"></path>
+        </svg>
+      </div>
+      <h3>Book Borrowing &amp; Circulation</h3>
+      <p class="card-desc">Borrow up to 4 books for 14 days with your student ID card. Renewal is available online 3 days before the due date.</p>
+      
+      <ul class="card-checklist">
+        <li>
+          <span class="check-icon">✓</span>
+          <span>Self-service checkout kiosks</span>
+        </li>
+        <li>
+          <span class="check-icon">✓</span>
+          <span>Automated SMS/Email reminders</span>
+        </li>
+        <li>
+          <span class="check-icon">✓</span>
+          <span>Overdue penalty: 10 BDT/day</span>
+        </li>
+      </ul>
+
+      <div class="card-footer">
+        <a href="#rules-modal" class="card-btn secondary" onclick="alert('Loan period: 14 days. Max 4 items. Late fine: 10 BDT/day.')">View Borrowing Rules &rarr;</a>
+      </div>
+    </div>
+
+    <!-- Card 2 -->
+    <div class="service-card">
+      <div class="card-icon-box">
+        <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <circle cx="11" cy="11" r="8"></circle>
+          <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+        </svg>
+      </div>
+      <h3>Research Support &amp; Turnitin</h3>
+      <p class="card-desc">Consult with library research specialists for literature reviews, citation analysis, and thesis similarity checks.</p>
+      
+      <ul class="card-checklist">
+        <li>
+          <span class="check-icon">✓</span>
+          <span>Turnitin similarity clearance</span>
+        </li>
+        <li>
+          <span class="check-icon">✓</span>
+          <span>Mendeley &amp; Zotero workshops</span>
+        </li>
+        <li>
+          <span class="check-icon">✓</span>
+          <span>LaTeX thesis template support</span>
+        </li>
+      </ul>
+
+      <div class="card-footer">
+        <a href="contact.html" class="card-btn secondary">Book Consultation &rarr;</a>
+      </div>
+    </div>
+
+    <!-- Card 3 -->
+    <div class="service-card highlight">
+      <div class="card-icon-box accent">
+        <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <rect x="2" y="3" width="20" height="14" rx="2" ry="2"></rect>
+          <line x1="8" y1="21" x2="16" y2="21"></line>
+          <line x1="12" y1="17" x2="12" y2="21"></line>
+        </svg>
+      </div>
+      <h3>Study Rooms &amp; Workstations</h3>
+      <p class="card-desc">Quiet individual study cubicles and collaborative group discussion rooms equipped with smart monitors and Wi-Fi.</p>
+      
+      <ul class="card-checklist">
+        <li>
+          <span class="check-icon">✓</span>
+          <span>12 Group Discussion Rooms (GDR)</span>
+        </li>
+        <li>
+          <span class="check-icon">✓</span>
+          <span>50 High-speed workstation PCs</span>
+        </li>
+        <li>
+          <span class="check-icon">✓</span>
+          <span>Air-conditioned silent reading hall</span>
+        </li>
+      </ul>
+
+      <div class="card-footer">
+        <button class="card-btn primary" onclick="alert('Seat reservation desk is located on the 1st floor counter.')">Reserve a Study Room</button>
+      </div>
+    </div>
+  </div>
+</main>
+
+
+    <!-- FOOTER -->
+    <footer class="site-footer">
+
+        <div class="footer-container">
+
+            <div class="footer-main">
+
+                <div class="footer-brand">
+
+                    <div class="footer-logo">
+                        <img
+                            src="./kiu_logo.png"
+                            alt="KIU"
+                        >
+                    </div>
+
+                    <div>
+                        <h3>KIU Library</h3>
+
+                        <p>
+                            Knowledge · Information · Understanding
+                        </p>
+                    </div>
+
+                </div>
+
+                <p class="footer-description">
+                    Providing access to knowledge and information
+                    resources for the Kishoreganj University community.
+                </p>
+
+            </div>
+
+
+            <div class="footer-column">
+
+                <h4>Explore</h4>
+
+                <a href="index.html">
+                    Home
+                </a>
+
+                <a href="services.html">
+                    Services
+                </a>
+
+                <a href="resources.html">
+                    Resources
+                </a>
+
+                <a href="notices.html">
+                    Notices
+                </a>
+
+            </div>
+
+
+            <div class="footer-column">
+
+                <h4>Account</h4>
+
+                <a href="login.html">
+                    Sign in
+                </a>
+
+                <a href="dashboard.html">
+                    My Library
+                </a>
+
+            </div>
+
+
+            <div class="footer-column">
+
+                <h4>Contact</h4>
+
+                <a href="mailto:library@kiu.ac.bd">
+                    library@kiu.ac.bd
+                </a>
+
+                <span>
+                    02-9988 32221
+                </span>
+
+                <span>
+                    Kishoreganj, Bangladesh
+                </span>
+
+            </div>
+
+        </div>
+
+
+        <div class="footer-bottom">
+
+            <span>
+                © 2026 Kishoreganj University Library
+            </span>
+
+            <span>
+                All rights reserved.
+            </span>
+
+        </div>
+
+    </footer>
+
+
+    <script src="js/auth.js"></script>
+    <script src="js/index.js"></script>
+
+</body>
+</html>
