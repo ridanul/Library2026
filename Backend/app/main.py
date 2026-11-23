@@ -709,21 +709,6 @@ def borrow_book(book_id: str, db: Session = Depends(get_db), current_user: model
         raise HTTPException(status_code=403, detail="Admin accounts cannot borrow books.")
     if book.available < 1:
         raise HTTPException(status_code=400, detail="No copies available.")
-<<<<<<< HEAD
-
-    # Check if the user already has an unreturned book
-    active_borrow = (
-        db.query(models.Borrow)
-        .filter(models.Borrow.user_id == current_user.id, models.Borrow.returned_at.is_(None))
-        .first()
-    )
-    if active_borrow:
-        raise HTTPException(
-            status_code=400,
-            detail="You already have an active borrowed book. Please return it before borrowing another.",
-        )
-
-=======
     active_loans = db.query(models.Borrow).filter(
         models.Borrow.user_id == current_user.id,
         models.Borrow.returned_at.is_(None),
@@ -741,7 +726,6 @@ def borrow_book(book_id: str, db: Session = Depends(get_db), current_user: model
     ).first()
     if duplicate_request:
         raise HTTPException(status_code=400, detail="You already have a pending request for this book.")
->>>>>>> origin/Main
     book.available -= 1
     db.add(models.BorrowRequest(user_id=current_user.id, book_id=book.id))
     db.commit()
