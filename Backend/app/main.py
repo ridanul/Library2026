@@ -430,17 +430,26 @@ def demote_from_admin(user_id: str, db: Session = Depends(get_db), admin: models
 
 
 # Admin: overdue loans + settings
+
 @app.get("/api/admin/overdue")
 def list_overdue(db: Session = Depends(get_db), admin: models.User = Depends(require_admin)):
     from datetime import date, timedelta
+
     grace_days = int(get_setting(db, "grace_days", "14"))
-    default_fine = float(get_setting(db, "late_return_default_fine", "5.0"))
+    fine_per_day = float(get_setting(db, "fine_per_day", "10"))
+
     items = []
-    borrows = db.query(models.Borrow).filter(models.Borrow.returned_at.is_(None)).all()
+    borrows = db.query(models.Borrow).filter(
+        models.Borrow.returned_at.is_(None)
+    ).all()
+
     for br in borrows:
         due = br.borrowed_at + timedelta(days=grace_days)
+
         if date.today() > due:
             days_over = (date.today() - due).days
+            fine = days_over * fine_per_day
+
             items.append({
                 "id": br.id,
                 "userId": br.user_id,
@@ -450,9 +459,11 @@ def list_overdue(db: Session = Depends(get_db), admin: models.User = Depends(req
                 "borrowed_at": br.borrowed_at,
                 "due_date": due,
                 "days_overdue": days_over,
-                "fine": default_fine,
+                "fine": round(fine, 2),
             })
+
     return {"items": items}
+
 
 
 @app.get("/api/admin/settings")

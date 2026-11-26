@@ -50,6 +50,9 @@
           <div class="text-right hidden sm:block text-xs">
             <p class="text-sm font-medium leading-tight text-ink" id="headerUserName">—</p>
             <p class="font-mono uppercase tracking-wide text-brass" id="headerUserRole">—</p>
+            <p id="headerUserFine" class="hidden font-mono text-[11px] font-semibold text-rust mt-0.5">
+    Fine: ৳0.00
+  </p>
           </div>
           <button id="profileBtn"
             class="text-[8px] sm:text-sm font-mono border border-ink/20 rounded px-2 py-1 sm:px-3 sm:py-2 hover:bg-parchmentDark transition">Profile</button>
@@ -174,6 +177,14 @@
           <p class="font-mono text-xs tracking-[0.2em] text-brass uppercase mb-1">Your loans</p>
           <h1 class="font-display text-3xl text-ink mb-6">Borrowed books</h1>
           <div id="myBorrowsList" class="space-y-3 max-w-3xl"></div>
+          <div id="userFineBanner" class="hidden border border-rust/30 bg-rust/5 rounded-lg px-4 py-3 text-right">
+      <p class="font-mono text-[10px] uppercase tracking-wider text-rust">Outstanding Fines</p>
+      <p id="userTotalFine" class="font-display text-2xl font-bold text-rust">৳0.00</p>
+    </div>
+        <div id="myFinesWrap" class="hidden mb-6 max-w-3xl">
+    <h2 class="font-mono text-xs uppercase tracking-wide text-charcoal/60 mb-2">Fine Breakdown</h2>
+    <div id="myFinesList" class="space-y-2"></div>
+  </div>
         </section>
 
         <section id="view-admin-borrowed" class="view-panel hidden bg-white rounded-lg p-5 sm:p-8 border border-ink/10 shadow-md">
@@ -304,6 +315,13 @@
                 <span id="overdueCount" class="stamp stamp-out text-[10px]">0</span>
               </div>
               <div id="overdueList" class="space-y-2"></div>
+            </div>
+            <div class="border border-ink/10 rounded-lg bg-white/70 p-5">
+              <div class="flex items-center justify-between mb-4">
+                <h2 class="font-display text-xl text-ink">Active loans (within 14 days)</h2>
+                <span id="withinGraceCount" class="stamp stamp-available text-[10px]">0</span>
+              </div>
+              <div id="withinGraceList" class="space-y-2"></div>
             </div>
           </div>
 
@@ -627,6 +645,8 @@
         </div>
         <p class="text-xs font-mono text-charcoal/50">Signed in as <span id="profEmail" class="font-medium"></span> · email cannot be changed.</p>
         <p id="profCardInfo" class="text-xs font-mono text-brass hidden"></p>
+<!-- ADD THIS -->
+<p id="profFineInfo" class="text-xs font-mono text-rust font-semibold hidden"></p>
         <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
           <div>
             <label class="block text-xs font-mono uppercase text-charcoal/60 mb-1">Department</label>

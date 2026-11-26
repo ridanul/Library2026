@@ -24,6 +24,166 @@ headerUserRole.textContent = state.user?.role === "admin"
   : (state.user?.role || "student");
 logoutBtn.addEventListener("click", () => Auth.logout());
 
+
+function renderUserFines(user = state.user, fines = []) {
+  if (Auth.isAdmin()) return;
+
+  const listTotal = Array.isArray(fines)
+    ? fines.reduce((sum, f) => sum + Number(f.amount || 0), 0)
+    : 0;
+  const totalFine = Number(user?.fine ?? user?.total_fine ?? user?.unpaid_fine ?? listTotal ?? 0);
+  const formatted = `৳${totalFine.toFixed(2)}`;
+
+  // 1. Header badge
+  const headerFine = document.getElementById("headerUserFine");
+  if (headerFine) {
+    headerFine.textContent = `Fine: ${formatted}`;
+    headerFine.classList.toggle("hidden", totalFine <= 0);
+  }
+
+  // 2. Profile modal
+  const profFine = document.getElementById("profFineInfo");
+  if (profFine) {
+    profFine.textContent = `Outstanding fine: ${formatted}`;
+    profFine.classList.toggle("hidden", totalFine <= 0);
+  }
+
+  // 3. Borrowed books view summary banner
+  const banner = document.getElementById("userFineBanner");
+  const totalEl = document.getElementById("userTotalFine");
+  if (banner && totalEl) {
+    totalEl.textContent = formatted;
+    banner.classList.toggle("hidden", totalFine <= 0);
+  }
+
+  // 4. Itemized fine breakdown list
+  const finesWrap = document.getElementById("myFinesWrap");
+  const finesList = document.getElementById("myFinesList");
+  if (finesWrap && finesList) {
+    if (Array.isArray(fines) && fines.length > 0) {
+      finesWrap.classList.remove("hidden");
+      finesList.innerHTML = fines.map((f) => `
+        <div class="flex items-center justify-between rounded border border-rust/20 bg-rust/5 px-4 py-2.5 text-sm">
+          <div>
+            <p class="font-medium text-ink">${escapeHtml(f.reason || "Overdue fine")}</p>
+            <p class="font-mono text-xs text-charcoal/50">${escapeHtml(String(f.created_at || f.date || ""))}</p>
+          </div>
+          <span class="font-mono font-semibold text-rust">৳${Number(f.amount || 0).toFixed(2)}</span>
+        </div>`).join("");
+    } else {
+      finesWrap.classList.add("hidden");
+    }
+  }
+}
+
+async function loadUserFines(borrowItems = null) {
+  if (Auth.isAdmin()) return;
+
+  // 1. Try refreshing the user object if Api.getMe or Api.me exists in api.js
+  try {
+    const meFn = Api.getMe || Api.me;
+    if (typeof meFn === "function") {
+      const freshUser = await meFn.call(Api);
+      if (freshUser) {
+        state.user = freshUser;
+        Auth.setSession(localStorage.getItem("lib_token"), freshUser);
+      }
+    }
+  } catch {
+    // keep cached state.user
+  }
+
+  // 2. Collect any itemized fines stored on the user object
+  const storedFines = Array.isArray(state.user?.fines) ? state.user.fines : [];
+
+  // 3. Calculate any overdue fine from borrowed books if backend didn't attach user.fine
+  const borrows = Array.isArray(borrowItems) ? borrowItems : [];
+  const dailyRate = Number(state.admin?.settings?.late_return_default_fine ?? 10);
+  const now = new Date();
+
+  const overdueFines = borrows
+    .map((b) => {
+      if (Number(b.fine ?? b.overdue_fine) > 0) {
+        return {
+          reason: `Overdue: ${b.bookTitle || b.title || "Book"}`,
+          amount: Number(b.fine ?? b.overdue_fine),
+          date: b.dueDate || b.due_date || "",
+        };
+      }
+      const dueRaw = b.dueDate || b.due_date;
+      if (!dueRaw) return null;
+      const due = new Date(dueRaw);
+      const diffDays = Math.floor((now - due) / (1000 * 60 * 60 * 24));
+      if (diffDays > 0) {
+        return {
+          reason: `Overdue (${diffDays} days): ${b.bookTitle || b.title || "Book"}`,
+          amount: diffDays * dailyRate,
+          date: `Due ${dueRaw}`,
+        };
+      }
+      return null;
+    })
+    .filter(Boolean);
+
+  const combinedFines = storedFines.length > 0 ? storedFines : overdueFines;
+  renderUserFines(state.user, combinedFines);
+}
+
+async function loadMyBorrows() {
+  const list = document.getElementById("myBorrowsList");
+  if (!list) return;
+  try {
+    const { items } = await Api.getMyBorrows();
+    await loadUserFines(items);
+
+    const dailyRate = Number(state.admin?.settings?.late_return_default_fine ?? 10);
+    const now = new Date();
+
+    list.innerHTML = items.length
+      ? items.map((borrow) => {
+          const dueRaw = borrow.dueDate || borrow.due_date;
+          const diffDays = dueRaw ? Math.floor((now - new Date(dueRaw)) / (1000 * 60 * 60 * 24)) : 0;
+          const computedFine = Number(borrow.fine ?? borrow.overdue_fine ?? (diffDays > 0 ? diffDays * dailyRate : 0));
+          const isWithin14Days = diffDays <= 0;
+
+          return `
+            <div class="rounded border border-ink/10 bg-parchment/60 p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+              <div>
+                <p class="font-display text-lg text-ink">${escapeHtml(borrow.bookTitle)}</p>
+                <p class="text-sm text-charcoal/60">${escapeHtml(borrow.author)}</p>
+                <p class="text-xs font-mono text-charcoal/60 mt-2">Borrowed ${escapeHtml(String(borrow.borrowedAt))} · Due ${escapeHtml(String(borrow.dueDate))}</p>
+                ${computedFine > 0 ? `<p class="text-xs font-mono font-semibold text-rust mt-1">Overdue (${diffDays} days) · Fine: ৳${computedFine.toFixed(2)}</p>` : ""}
+              </div>
+              ${isWithin14Days ? `
+                <button data-student-return="${borrow.bookId || borrow.id}"
+                  class="self-start sm:self-center text-xs font-mono border border-ink/20 text-ink px-3 py-2 rounded hover:bg-parchmentDark transition">
+                  Mark returned
+                </button>` : ""}
+            </div>`;
+        }).join("")
+      : `<p class="text-sm text-charcoal/50">You have no borrowed books.</p>`;
+
+    list.querySelectorAll("[data-student-return]").forEach((btn) => {
+      btn.addEventListener("click", async () => {
+        try {
+          if (typeof Api.returnBook === "function") {
+            await Api.returnBook(btn.dataset.studentReturn);
+          } else {
+            await Api.adminReturnLoan(btn.dataset.studentReturn);
+          }
+          toast("Book marked as returned.");
+          loadMyBorrows();
+          loadBooks();
+        } catch (err) {
+          toast(err.message || "Could not return this book.");
+        }
+      });
+    });
+  } catch (err) {
+    list.innerHTML = `<p class="text-sm text-rust">${escapeHtml(err.message || "Could not load borrowed books.")}</p>`;
+  }
+}
+
 if (Auth.isAdmin()) {
   document.getElementById("manageNavBtn")?.classList.remove("hidden");
   document.getElementById("borrowedNavBtn")?.classList.add("hidden");
@@ -44,24 +204,6 @@ function setView(view) {
   if (view === "admin-borrowed" && Auth.isAdmin()) loadAdminPanels();
   if (view === "notifications") loadNotifications();
   if (view === "manage") loadManageTable();
-}
-
-async function loadMyBorrows() {
-  const list = document.getElementById("myBorrowsList");
-  if (!list) return;
-  try {
-    const { items } = await Api.getMyBorrows();
-    list.innerHTML = items.length
-      ? items.map((borrow) => `
-        <div class="rounded border border-ink/10 bg-parchment/60 p-4">
-          <p class="font-display text-lg text-ink">${escapeHtml(borrow.bookTitle)}</p>
-          <p class="text-sm text-charcoal/60">${escapeHtml(borrow.author)}</p>
-          <p class="text-xs font-mono text-charcoal/60 mt-2">Borrowed ${escapeHtml(String(borrow.borrowedAt))} · Due ${escapeHtml(String(borrow.dueDate))}</p>
-        </div>`).join("")
-      : `<p class="text-sm text-charcoal/50">You have no borrowed books.</p>`;
-  } catch (err) {
-    list.innerHTML = `<p class="text-sm text-rust">${escapeHtml(err.message || "Could not load borrowed books.")}</p>`;
-  }
 }
 setView("browse");
 
@@ -273,6 +415,7 @@ if (Auth.isAdmin()) {
   setView("manage");
 } else {
   loadBooks();
+  loadUserFines();
 }
 
 const bookDetailModal = document.getElementById("bookDetailModal");
@@ -791,12 +934,13 @@ async function loadAdminPanels() {
     state.admin.users = usersResp.items || [];
     state.admin.settings = {
       grace_days: Number(settingsResp.grace_days ?? 14),
-      late_return_default_fine: Number(settingsResp.late_return_default_fine ?? 5),
+      late_return_default_fine: Number(settingsResp.late_return_default_fine ?? 10),
     };
 
     document.getElementById("pendingCount").textContent = pendingUsers.length;
     document.getElementById("borrowRequestCount").textContent = borrowRequests.length;
     document.getElementById("overdueCount").textContent = overdueLoans.length;
+
     document.getElementById("adminBorrowsTableBody").innerHTML = adminBorrows.length
       ? adminBorrows.map((borrow) => `
         <tr class="border-t border-ink/5">
@@ -892,20 +1036,29 @@ async function loadAdminPanels() {
       });
     });
 
+    // Overdue / unreturned books
     const overdueList = document.getElementById("overdueList");
+    const dailyRate = Number(state.admin.settings.late_return_default_fine ?? 10);
     overdueList.innerHTML = overdueLoans.length
-      ? overdueLoans.map((loan) => `
+      ? overdueLoans.map((loan) => {
+          const daysOverdue = Number(loan.days_overdue || 0);
+          const totalFine = daysOverdue > 0
+            ? daysOverdue * dailyRate
+            : Number(loan.fine || 0);
+
+          return `
         <div class="rounded border border-rust/20 bg-rust/5 p-3">
           <p class="font-medium text-ink">${escapeHtml(loan.userName)} — ${escapeHtml(loan.bookTitle)}</p>
           <p class="text-xs font-mono text-charcoal/50">Due ${escapeHtml(loan.due_date)} · not returned</p>
           <div class="mt-2 flex flex-wrap items-center justify-between gap-2">
-            <div class="text-xs text-charcoal/60">Overdue days: ${escapeHtml(String(loan.days_overdue || "—"))} · Fine: ${loan.fine ? ("$" + Number(loan.fine).toFixed(2)) : "—"}</div>
+            <div class="text-xs text-charcoal/60">Overdue days: ${escapeHtml(String(loan.days_overdue || "—"))} · Fine: ${totalFine > 0 ? ("৳" + totalFine.toFixed(2)) : "—"}</div>
             <div class="flex items-center gap-2">
               <button data-return="${loan.id}" class="text-xs font-mono border border-ink/20 text-ink px-3 py-1.5 rounded hover:bg-parchmentDark transition">Mark returned</button>
-              <button data-charge="${loan.userId}" data-amount="${loan.fine ?? ""}" class="text-xs font-mono bg-ink text-parchment px-3 py-1.5 rounded hover:bg-ink/90">Charge fine</button>
+              <button data-charge="${loan.userId}" data-amount="${totalFine > 0 ? totalFine.toFixed(2) : ""}" class="text-xs font-mono bg-ink text-parchment px-3 py-1.5 rounded hover:bg-ink/90">Charge fine</button>
             </div>
           </div>
-        </div>`).join("")
+        </div>`;
+        }).join("")
       : `<p class="text-sm text-charcoal/50">No overdue loans right now.</p>`;
 
     overdueList.querySelectorAll("[data-return]").forEach((btn) => {
@@ -931,6 +1084,50 @@ async function loadAdminPanels() {
         document.getElementById("fineModal").classList.remove("hidden");
       });
     });
+
+    // Active loans within 14-day grace period
+    const graceDays = Number(state.admin.settings.grace_days ?? 14);
+    const now = new Date();
+    const withinGraceLoans = adminBorrows.filter((borrow) => {
+      const borrowedDate = new Date(borrow.borrowedAt);
+      const daysHeld = Math.floor((now - borrowedDate) / (1000 * 60 * 60 * 24));
+      return daysHeld <= graceDays;
+    });
+
+    const withinGraceCountEl = document.getElementById("withinGraceCount");
+    const withinGraceList = document.getElementById("withinGraceList");
+    if (withinGraceCountEl) withinGraceCountEl.textContent = withinGraceLoans.length;
+
+    if (withinGraceList) {
+      withinGraceList.innerHTML = withinGraceLoans.length
+        ? withinGraceLoans.map((borrow) => {
+            const daysHeld = Math.max(0, Math.floor((now - new Date(borrow.borrowedAt)) / (1000 * 60 * 60 * 24)));
+            const daysLeft = Math.max(0, graceDays - daysHeld);
+            return `
+          <div class="rounded border border-ink/10 bg-parchment/60 p-3">
+            <p class="font-medium text-ink">${escapeHtml(borrow.userName)} — ${escapeHtml(borrow.bookTitle)}</p>
+            <p class="text-xs font-mono text-charcoal/50">Borrowed ${escapeHtml(String(borrow.borrowedAt))} · Due ${escapeHtml(String(borrow.dueDate))}</p>
+            <div class="mt-2 flex items-center justify-between gap-2">
+              <span class="text-xs font-mono text-sage">${daysHeld}d held · ${daysLeft}d left in ${graceDays}-day period</span>
+              <button data-return-grace="${borrow.id}" class="text-xs font-mono border border-ink/20 text-ink px-3 py-1.5 rounded hover:bg-parchmentDark transition">Mark returned</button>
+            </div>
+          </div>`;
+          }).join("")
+        : `<p class="text-sm text-charcoal/50">No active loans under ${graceDays} days.</p>`;
+
+      withinGraceList.querySelectorAll("[data-return-grace]").forEach((btn) => {
+        btn.addEventListener("click", async () => {
+          try {
+            await Api.adminReturnLoan(btn.dataset.returnGrace);
+            toast("Book marked as returned.");
+            loadAdminPanels();
+            loadBooks();
+          } catch (err) {
+            toast(err.message || "Could not mark the book returned.");
+          }
+        });
+      });
+    }
 
     initAdminNotificationForm();
     renderMemberTables();
@@ -1210,6 +1407,7 @@ function fillProfileModal() {
   } else {
     cardInfo.classList.add("hidden");
   }
+  renderUserFines(u);
   document.getElementById("profPassword").value = "";
   document.getElementById("profileFormError").classList.add("hidden");
 }
