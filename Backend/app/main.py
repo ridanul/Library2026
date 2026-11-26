@@ -1,4 +1,7 @@
-from datetime import date
+from datetime import date, datetime, timedelta, timezone
+import hashlib
+import hmac
+import secrets
 from typing import Optional, List
 from pathlib import Path
 
@@ -19,10 +22,10 @@ from appwrite.permission import Permission
 from appwrite.role import Role
 from .Module.AppwriteModule import storage as appwrite_storage
 from . import models, schemas, seed
-from .email_utils import send_verification_email
+from .email_utils import send_password_reset_email, send_verification_email
 from .database import Base, engine, ensure_schema, get_db
 from .auth import (
-    hash_password, verify_password, create_access_token,
+    SECRET_KEY, hash_password, verify_password, create_access_token,
     get_current_user, require_admin,
 )
 
@@ -214,6 +217,64 @@ def resend_verification(payload: schemas.ResendVerifyIn, db: Session = Depends(g
     return {"status": "ok"}
 
 
+@app.post("/api/auth/forgot-password")
+def request_password_reset(payload: schemas.PasswordResetRequestIn, db: Session = Depends(get_db)):
+    user = db.query(models.User).filter(models.User.email == payload.email).first()
+    if user:
+        code = f"{secrets.randbelow(900000) + 100000}"
+        now = datetime.now(timezone.utc)
+        reset_code = models.PasswordResetCode(
+            user_id=user.id,
+            code_hash=hmac.new(
+                SECRET_KEY.encode("utf-8"), code.encode("utf-8"), hashlib.sha256
+            ).hexdigest(),
+            expires_at=(now + timedelta(minutes=15)).isoformat(),
+            created_at=now.isoformat(),
+            attempts=0,
+        )
+        db.query(models.PasswordResetCode).filter(
+            models.PasswordResetCode.user_id == user.id
+        ).delete(synchronize_session=False)
+        db.add(reset_code)
+        db.commit()
+        send_password_reset_email(user.email, code)
+    return {
+        "message": "If an account exists for that email, a password reset code has been sent."
+    }
+
+
+@app.post("/api/auth/reset-password")
+def reset_password(payload: schemas.PasswordResetConfirmIn, db: Session = Depends(get_db)):
+    user = db.query(models.User).filter(models.User.email == payload.email).first()
+    if not user:
+        raise HTTPException(status_code=400, detail="Invalid or expired reset code.")
+
+    reset_code = (
+        db.query(models.PasswordResetCode)
+        .filter(models.PasswordResetCode.user_id == user.id)
+        .order_by(models.PasswordResetCode.created_at.desc())
+        .first()
+    )
+    if not reset_code or reset_code.attempts >= 5:
+        raise HTTPException(status_code=400, detail="Invalid or expired reset code.")
+
+    reset_code.attempts += 1
+    submitted_hash = hmac.new(
+        SECRET_KEY.encode("utf-8"), payload.code.encode("utf-8"), hashlib.sha256
+    ).hexdigest()
+    if (
+        not hmac.compare_digest(reset_code.code_hash, submitted_hash)
+        or datetime.now(timezone.utc) >= datetime.fromisoformat(reset_code.expires_at)
+    ):
+        db.commit()
+        raise HTTPException(status_code=400, detail="Invalid or expired reset code.")
+
+    user.hashed_password = hash_password(payload.new_password)
+    db.delete(reset_code)
+    db.commit()
+    return {"message": "Password reset successfully. You can now sign in."}
+
+
 @app.post("/api/auth/login", response_model=schemas.TokenOut)
 def login(payload: schemas.LoginIn, db: Session = Depends(get_db)):
     user = db.query(models.User).filter(models.User.email == payload.email).first()
@@ -308,6 +369,7 @@ def reject_user(user_id: str, db: Session = Depends(get_db), admin: models.User 
     for model in (
         models.Notification,
         models.EmailVerification,
+        models.PasswordResetCode,
         models.BorrowRequest,
         models.Review,
         models.Fine,
@@ -1253,7 +1315,11 @@ async def book_page():
 def frontend_favicon():
     return _serve_frontend_page("favicon.ico")
 
+@app.get("/forgetPassword.html")
+def frontend_forgetPassword():
+    return _serve_frontend_page("forgetPassword.html")
+
 
 @app.get("/kiu_logo.png")
-def frontend_favicon():
+def frontend_logo():
     return _serve_frontend_page("kiu_logo.png")

@@ -43,8 +43,8 @@ different dev server), that works too — CORS is wide open. Just point
 ## What's implemented
 
 - **Auth** — register/login with bcrypt-hashed passwords, JWT bearer tokens,
-  a `role` of `student` or `admin` set at registration (matches the frontend's
-  toggle).
+  email verification, and password recovery through a 15-minute, one-time code.
+  Reset codes are stored hashed and limited to five attempts.
 - **Books** — search by title/author/ISBN, filter by genre, add/edit/delete
   (admin only), borrow/return with live copy counts.
 - **Recommendations** — pulled from each student's saved genre interests.

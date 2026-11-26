@@ -111,6 +111,19 @@ class EmailVerification(Base):
     user = relationship("User")
 
 
+class PasswordResetCode(Base):
+    __tablename__ = "password_reset_codes"
+
+    id = Column(String, primary_key=True, default=lambda: gen_id("prc"))
+    user_id = Column(String, ForeignKey("users.id"), nullable=False, index=True)
+    code_hash = Column(String, nullable=False)
+    expires_at = Column(String, nullable=False)
+    created_at = Column(String, nullable=False)
+    attempts = Column(Integer, nullable=False, default=0)
+
+    user = relationship("User")
+
+
 class AppSetting(Base):
     __tablename__ = "app_settings"
 

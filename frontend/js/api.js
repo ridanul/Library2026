@@ -96,6 +96,8 @@ var Api = (() => {
     login: (data) => request(ENDPOINTS.login, { method: "POST", body: data, auth: false }),
     verifyEmail: (data) => request("/auth/verify", { method: "POST", body: data, auth: false }),
     resendVerification: (data) => request("/auth/resend-verification", { method: "POST", body: data, auth: false }),
+    requestPasswordReset: (data) => request("/auth/forgot-password", { method: "POST", body: data, auth: false }),
+    resetPassword: (data) => request("/auth/reset-password", { method: "POST", body: data, auth: false }),
     me: () => request(ENDPOINTS.me),
     listBooks: (params = {}) => {
       const qs = new URLSearchParams(params).toString();
