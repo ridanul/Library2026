@@ -144,41 +144,16 @@ async function loadMyBorrows() {
           const dueRaw = borrow.dueDate || borrow.due_date;
           const diffDays = dueRaw ? Math.floor((now - new Date(dueRaw)) / (1000 * 60 * 60 * 24)) : 0;
           const computedFine = Number(borrow.fine ?? borrow.overdue_fine ?? (diffDays > 0 ? diffDays * dailyRate : 0));
-          const isWithin14Days = diffDays <= 0;
 
           return `
-            <div class="rounded border border-ink/10 bg-parchment/60 p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-              <div>
-                <p class="font-display text-lg text-ink">${escapeHtml(borrow.bookTitle)}</p>
-                <p class="text-sm text-charcoal/60">${escapeHtml(borrow.author)}</p>
-                <p class="text-xs font-mono text-charcoal/60 mt-2">Borrowed ${escapeHtml(String(borrow.borrowedAt))} · Due ${escapeHtml(String(borrow.dueDate))}</p>
-                ${computedFine > 0 ? `<p class="text-xs font-mono font-semibold text-rust mt-1">Overdue (${diffDays} days) · Fine: ৳${computedFine.toFixed(2)}</p>` : ""}
-              </div>
-              ${isWithin14Days ? `
-                <button data-student-return="${borrow.bookId || borrow.id}"
-                  class="self-start sm:self-center text-xs font-mono border border-ink/20 text-ink px-3 py-2 rounded hover:bg-parchmentDark transition">
-                  Mark returned
-                </button>` : ""}
+            <div class="rounded border border-ink/10 bg-parchment/60 p-4">
+              <p class="font-display text-lg text-ink">${escapeHtml(borrow.bookTitle)}</p>
+              <p class="text-sm text-charcoal/60">${escapeHtml(borrow.author)}</p>
+              <p class="text-xs font-mono text-charcoal/60 mt-2">Borrowed ${escapeHtml(String(borrow.borrowedAt))} · Due ${escapeHtml(String(borrow.dueDate))}</p>
+              ${computedFine > 0 ? `<p class="text-xs font-mono font-semibold text-rust mt-1">Overdue (${diffDays} days) · Fine: ৳${computedFine.toFixed(2)}</p>` : ""}
             </div>`;
         }).join("")
       : `<p class="text-sm text-charcoal/50">You have no borrowed books.</p>`;
-
-    list.querySelectorAll("[data-student-return]").forEach((btn) => {
-      btn.addEventListener("click", async () => {
-        try {
-          if (typeof Api.returnBook === "function") {
-            await Api.returnBook(btn.dataset.studentReturn);
-          } else {
-            await Api.adminReturnLoan(btn.dataset.studentReturn);
-          }
-          toast("Book marked as returned.");
-          loadMyBorrows();
-          loadBooks();
-        } catch (err) {
-          toast(err.message || "Could not return this book.");
-        }
-      });
-    });
   } catch (err) {
     list.innerHTML = `<p class="text-sm text-rust">${escapeHtml(err.message || "Could not load borrowed books.")}</p>`;
   }
