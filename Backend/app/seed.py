@@ -34,6 +34,17 @@ DEMO_BOOKS = [
 
 def run(db: Session):
     if db.query(models.User).count() > 0:
+        if not db.query(models.User).filter(models.User.email == "teacher@demo.io").first():
+            db.add(models.User(
+                # Teachers carry no academic session or student ID — those fields are
+                # student-only, consistent with the registration form and profile editor.
+                name="Daniel Roy", email="teacher@demo.io",
+                hashed_password=hash_password("teacher123"),
+                role="teacher", genres="", email_verified=True, status="approved",
+                department="EEE", session="", student_id="",
+                card_number="TCH-0002", card_expires_on=date(2028, 6, 30),
+            ))
+            db.commit()
         return  # already seeded
 
     student = models.User(
