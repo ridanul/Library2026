@@ -1,26 +1,22 @@
-// ---------------------------------------------------------------------------
-// Config: point this at your FastAPI server.
-// If the API is unreachable, the app falls back to DEMO_MODE with mock data
-// so the frontend can be reviewed/demoed on its own.
-// ---------------------------------------------------------------------------
 window.LIB_CONFIG = {
-  API_BASE: window.location.protocol === "file:" ? "http://localhost:8000/api" : "https://library.ridanul.tech/api",  DEMO_MODE_FALLBACK: false, // Set to false to catch API errors for debugging
+  API_BASE: window.location.protocol === "file:" ? "http://localhost:8000/api" : "https://library.ridanul.tech/api",
+  DEMO_MODE_FALLBACK: false,
   ENDPOINTS: {
-    register: "/auth/register",          // POST  {name,email,password,role}
-    login: "/auth/login",                // POST  {email,password} -> {token,user}
-    me: "/auth/me",                      // GET   -> {user}
-    books: "/books",                     // GET ?search=&genre=&page= | POST (admin)
-    book: (id) => `/books/${id}`,        // GET | PUT (admin) | DELETE (admin)
-    borrow: (id) => `/books/${id}/borrow`,   // POST
-    returnBook: (id) => `/books/${id}/return`, // POST
-    recommendations: "/recommendations", // GET -> [book]
-    interests: "/users/interests",       // GET | POST {genres:[]}
-    notifications: "/notifications",     // GET -> [notification]
-    notificationRead: (id) => `/notifications/${id}/read`, // POST
-    verifyEmail: "/auth/verify",         // POST {email,code} -> verify email
-    resendVerification: "/auth/resend-verification", // POST {email}
-    profile: "/users/me",                // PUT {name,password?,department?,session?,student_id?}
-    uploadCover: "/uploads/cover",       // POST multipart file -> {url}
-    bookReviews: (id) => `/books/${id}/reviews`, // GET approved | POST member review
+    register: "/auth/register",
+    login: "/auth/login",
+    me: "/auth/me",
+    books: "/books",
+    book: (id) => `/books/${id}`,
+    borrow: (id) => `/books/${id}/borrow`,
+    returnBook: (id) => `/books/${id}/return`,
+    recommendations: "/recommendations",
+    interests: "/users/interests",
+    notifications: "/notifications",
+    notificationRead: (id) => `/notifications/${id}/read`,
+    verifyEmail: "/auth/verify",
+    resendVerification: "/auth/resend-verification",
+    profile: "/users/me",
+    uploadCover: "/uploads/cover",
+    bookReviews: (id) => `/books/${id}/reviews`,
   },
 };

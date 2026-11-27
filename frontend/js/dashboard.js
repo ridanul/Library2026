@@ -93,6 +93,12 @@ async function loadUserFines(borrowItems = null) {
     // keep cached state.user
   }
 
+  // Teachers are exempt from all fines
+  if (state.user?.role === "teacher") {
+    renderUserFines(state.user, []);
+    return;
+  }
+
   // 2. Collect any itemized fines stored on the user object
   const storedFines = Array.isArray(state.user?.fines) ? state.user.fines : [];
 
@@ -134,6 +140,7 @@ async function loadMyBorrows() {
   if (!list) return;
   try {
     const { items } = await Api.getMyBorrows();
+    const isTeacher = state.user?.role === "teacher";
     await loadUserFines(items);
 
     const dailyRate = Number(state.admin?.settings?.late_return_default_fine ?? 10);
@@ -143,7 +150,9 @@ async function loadMyBorrows() {
       ? items.map((borrow) => {
           const dueRaw = borrow.dueDate || borrow.due_date;
           const diffDays = dueRaw ? Math.floor((now - new Date(dueRaw)) / (1000 * 60 * 60 * 24)) : 0;
-          const computedFine = Number(borrow.fine ?? borrow.overdue_fine ?? (diffDays > 0 ? diffDays * dailyRate : 0));
+          const computedFine = isTeacher
+            ? 0
+            : Number(borrow.fine ?? borrow.overdue_fine ?? (diffDays > 0 ? diffDays * dailyRate : 0));
 
           return `
             <div class="rounded border border-ink/10 bg-parchment/60 p-4">
@@ -1016,20 +1025,23 @@ async function loadAdminPanels() {
     const dailyRate = Number(state.admin.settings.late_return_default_fine ?? 10);
     overdueList.innerHTML = overdueLoans.length
       ? overdueLoans.map((loan) => {
+          const isTeacherLoan = loan.userRole === "teacher";
           const daysOverdue = Number(loan.days_overdue || 0);
-          const totalFine = daysOverdue > 0
-            ? daysOverdue * dailyRate
-            : Number(loan.fine || 0);
+          const totalFine = isTeacherLoan
+            ? 0
+            : (daysOverdue > 0
+                ? daysOverdue * dailyRate
+                : Number(loan.fine || 0));
 
           return `
         <div class="rounded border border-rust/20 bg-rust/5 p-3">
           <p class="font-medium text-ink">${escapeHtml(loan.userName)} — ${escapeHtml(loan.bookTitle)}</p>
           <p class="text-xs font-mono text-charcoal/50">Due ${escapeHtml(loan.due_date)} · not returned</p>
           <div class="mt-2 flex flex-wrap items-center justify-between gap-2">
-            <div class="text-xs text-charcoal/60">Overdue days: ${escapeHtml(String(loan.days_overdue || "—"))} · Fine: ${totalFine > 0 ? ("৳" + totalFine.toFixed(2)) : "—"}</div>
+            <div class="text-xs text-charcoal/60">${isTeacherLoan ? "Teacher loan · No fine" : `Overdue days: ${escapeHtml(String(loan.days_overdue || "—"))} · Fine: ${totalFine > 0 ? ("৳" + totalFine.toFixed(2)) : "—"}`}</div>
             <div class="flex items-center gap-2">
               <button data-return="${loan.id}" class="text-xs font-mono border border-ink/20 text-ink px-3 py-1.5 rounded hover:bg-parchmentDark transition">Mark returned</button>
-              <button data-charge="${loan.userId}" data-amount="${totalFine > 0 ? totalFine.toFixed(2) : ""}" class="text-xs font-mono bg-ink text-parchment px-3 py-1.5 rounded hover:bg-ink/90">Charge fine</button>
+              ${isTeacherLoan ? "" : `<button data-charge="${loan.userId}" data-amount="${totalFine > 0 ? totalFine.toFixed(2) : ""}" class="text-xs font-mono bg-ink text-parchment px-3 py-1.5 rounded hover:bg-ink/90">Charge fine</button>`}
             </div>
           </div>
         </div>`;

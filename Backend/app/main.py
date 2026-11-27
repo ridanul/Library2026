@@ -460,23 +460,23 @@ def list_overdue(db: Session = Depends(get_db), admin: models.User = Depends(req
 
         if date.today() > due:
             days_over = (date.today() - due).days
-            fine = days_over * fine_per_day
+            is_teacher = bool(br.user and br.user.role == "teacher")
+            fine = 0.0 if is_teacher else round(days_over * fine_per_day, 2)
 
             items.append({
                 "id": br.id,
                 "userId": br.user_id,
                 "userName": br.user.name,
+                "userRole": br.user.role if br.user else "",
                 "bookId": br.book_id,
                 "bookTitle": br.book.title,
                 "borrowed_at": br.borrowed_at,
                 "due_date": due,
                 "days_overdue": days_over,
-                "fine": round(fine, 2),
+                "fine": fine,
             })
 
     return {"items": items}
-
-
 
 @app.get("/api/admin/settings")
 def get_admin_settings(db: Session = Depends(get_db), admin: models.User = Depends(require_admin)):
@@ -503,6 +503,8 @@ def charge_fine(user_id: str, payload: dict, db: Session = Depends(get_db), admi
     user = db.query(models.User).filter(models.User.id == user_id).first()
     if not user:
         raise HTTPException(status_code=404, detail="User not found.")
+    if user.role == "teacher":
+        raise HTTPException(status_code=400, detail="Teachers are exempt from fines.")
     raw_amount = payload.get("amount")
     if raw_amount in (None, ""):
         amount = float(get_setting(db, "late_return_default_fine", "5.0"))
@@ -528,8 +530,6 @@ def charge_fine(user_id: str, payload: dict, db: Session = Depends(get_db), admi
     db.commit()
     db.refresh(fine)
     return {"status": "ok", "fine": {"id": fine.id, "amount": float(fine.amount), "reason": fine.reason}}
-
-
 # Alias: plural route used by frontend/mock
 @app.post("/api/admin/users/{user_id}/fines")
 def create_fine_alias(user_id: str, payload: dict, db: Session = Depends(get_db), admin: models.User = Depends(require_admin)):
@@ -791,6 +791,26 @@ def borrow_book(book_id: str, db: Session = Depends(get_db), current_user: model
         raise HTTPException(status_code=403, detail="Admin accounts cannot borrow books.")
     if book.available < 1:
         raise HTTPException(status_code=400, detail="No copies available.")
+
+    existing_borrow = db.query(models.Borrow).filter(
+        models.Borrow.user_id == current_user.id,
+        models.Borrow.book_id == book.id,
+        models.Borrow.returned_at.is_(None),
+    ).first()
+    if existing_borrow:
+        raise HTTPException(status_code=400, detail="You already have an active loan for this book.")
+
+    # Teachers borrow immediately without admin approval
+    if current_user.role == "teacher":
+        book.available -= 1
+        db.add(models.Borrow(
+            user_id=current_user.id,
+            book_id=book.id,
+            borrowed_at=date.today(),
+        ))
+        db.commit()
+        return book_out(book)
+
     active_loans = db.query(models.Borrow).filter(
         models.Borrow.user_id == current_user.id,
         models.Borrow.returned_at.is_(None),
@@ -813,14 +833,17 @@ def borrow_book(book_id: str, db: Session = Depends(get_db), current_user: model
     db.commit()
     return book_out(book)
 
+
 @app.post("/api/books/{book_id}/return", response_model=schemas.BookOut)
 def return_book(book_id: str, db: Session = Depends(get_db), current_user: models.User = Depends(get_current_user)):
+    if current_user.role != "admin":
+        raise HTTPException(status_code=403, detail="Only an admin can mark books as returned.")
     book = db.query(models.Book).filter(models.Book.id == book_id).first()
     if not book:
         raise HTTPException(status_code=404, detail="Book not found.")
     open_borrow = (
         db.query(models.Borrow)
-        .filter(models.Borrow.book_id == book.id, models.Borrow.user_id == current_user.id, models.Borrow.returned_at.is_(None))
+        .filter(models.Borrow.book_id == book.id, models.Borrow.returned_at.is_(None))
         .first()
     )
     if not open_borrow:
@@ -845,6 +868,7 @@ def list_my_borrows(
         .order_by(models.Borrow.borrowed_at.desc())
         .all()
     )
+    is_teacher = current_user.role == "teacher"
     items = []
     for borrow in rows:
         due = borrow.borrowed_at + timedelta(days=grace_days)
@@ -857,7 +881,7 @@ def list_my_borrows(
             "borrowedAt": borrow.borrowed_at,
             "dueDate": due,
             "daysOverdue": days_over,
-            "fine": round(days_over * fine_per_day, 2),
+            "fine": 0.0 if is_teacher else round(days_over * fine_per_day, 2),
         })
     return {"items": items}
 
