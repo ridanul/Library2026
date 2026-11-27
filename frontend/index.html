@@ -246,57 +246,150 @@
             </div>
         </section>
 
-        <section class="featured-catalog">
-            <div class="section-header">
-                <span class="sub-title">CURATED SELECTION</span>
-                <h2>Trending Academic Books</h2>
-            </div>
+        <style>
+  .featured-catalog .tab-btn.active {
+    background-color: #000000;
+    color: #F3EDE1;
+    border-color: #000000;
+  }
+</style>
 
-            <div class="filter-tabs">
-                <button class="tab-btn active" onclick="filterBooks('all')">All</button>
-                <button class="tab-btn" onclick="filterBooks('cse')">Computer Science</button>
-                <button class="tab-btn" onclick="filterBooks('math')">Mathematics</button>
-                <button class="tab-btn" onclick="filterBooks('business')">Business</button>
-            </div>
+<section class="featured-catalog bg-parchment py-16 px-4 sm:px-6 border-t border-ink/10">
+  <div class="max-w-6xl mx-auto">
 
-            <div class="book-grid" id="bookGrid">
-                <!-- Card 1 -->
-                <div class="book-card" data-category="cse" onclick="openBookModal('Introduction to Algorithms (CLRS)', 'Thomas H. Cormen', 'QA76.6 .C662', 'Available (4 copies)', 'CS', 'available')" style="cursor: pointer;">
-                    <div class="badge available">Available (4 copies)</div>
-                    <div class="book-cover-placeholder">CS</div>
-                    <h4>Introduction to Algorithms (CLRS)</h4>
-                    <p class="author">Thomas H. Cormen</p>
-                    <div class="book-meta">
-                        <span>Call No: QA76.6 .C662</span>
-                    </div>
-                    <button class="btn-borrow" onclick="event.stopPropagation(); borrowBook('Introduction to Algorithms (CLRS)')">Borrow / Reserve</button>
-                </div>
+    <!-- Header & Filter Tabs -->
+    <div class="flex flex-col md:flex-row md:items-end justify-between gap-4 mb-10">
+      <div class="section-header">
+        <span class="sub-title block font-mono text-xs tracking-[0.2em] text-brass uppercase mb-1.5">Curated Selection</span>
+        <h2 class="font-display text-3xl sm:text-4xl font-bold text-ink">Trending Academic Books</h2>
+      </div>
 
-                <!-- Card 2 -->
-                <div class="book-card" data-category="cse" onclick="openBookModal('Python Crash Course', 'Eric Matthes', 'QA76.73 .P98', 'Available (2 copies)', 'PY', 'available')" style="cursor: pointer;">
-                    <div class="badge available">Available (2 copies)</div>
-                    <div class="book-cover-placeholder">PY</div>
-                    <h4>Python Crash Course</h4>
-                    <p class="author">Eric Matthes</p>
-                    <div class="book-meta">
-                        <span>Call No: QA76.73 .P98</span>
-                    </div>
-                    <button class="btn-borrow" onclick="event.stopPropagation(); borrowBook('Python Crash Course')">Borrow / Reserve</button>
-                </div>
+      <div class="filter-tabs flex flex-wrap gap-2">
+        <button type="button" class="tab-btn active px-4 py-1.5 rounded-full text-xs font-mono bg-white/80 text-charcoal border border-ink/15 hover:border-brass transition"
+          onclick="filterBooks('all')">All</button>
+        <button type="button" class="tab-btn px-4 py-1.5 rounded-full text-xs font-mono bg-white/80 text-charcoal border border-ink/15 hover:border-brass transition"
+          onclick="filterBooks('cse')">Computer Science</button>
+        <button type="button" class="tab-btn px-4 py-1.5 rounded-full text-xs font-mono bg-white/80 text-charcoal border border-ink/15 hover:border-brass transition"
+          onclick="filterBooks('math')">Mathematics</button>
+        <button type="button" class="tab-btn px-4 py-1.5 rounded-full text-xs font-mono bg-white/80 text-charcoal border border-ink/15 hover:border-brass transition"
+          onclick="filterBooks('business')">Business</button>
+      </div>
+    </div>
 
-                <!-- Card 3 -->
-                <div class="book-card" data-category="math" onclick="openBookModal('Calculus: Early Transcendentals', 'James Stewart', 'Due: Nov 05, 2026', 'Checked Out', 'MA', 'reserved')" style="cursor: pointer;">
-                    <div class="badge reserved">Checked Out</div>
-                    <div class="book-cover-placeholder">MA</div>
-                    <h4>Calculus: Early Transcendentals</h4>
-                    <p class="author">James Stewart</p>
-                    <div class="book-meta">
-                        <span>Due: Nov 05, 2026</span>
-                    </div>
-                    <button class="btn-borrow secondary" onclick="event.stopPropagation(); reserveBook('Calculus: Early Transcendentals')">Place Hold</button>
-                </div>
-            </div>
-        </section>
+    <!-- Book Grid -->
+    <!-- Book Grid -->
+    <div class="book-grid grid grid-cols-1 md:grid-cols-3 gap-6" id="bookGrid">
+
+      <!-- Card 1 -->
+      <div class="book-card group bg-white border border-ink/10 rounded-xl p-5 shadow-sm hover:shadow-md hover:-translate-y-0.5 transition flex flex-col cursor-pointer"
+        data-category="cse"
+        data-book-title="Introduction to Algorithms"
+        onclick="openBookModal('Introduction to Algorithms (CLRS)', 'Thomas H. Cormen', 'QA76.6 .C662', 'Available', this.querySelector('img').src, 'available')">
+        <div class="flex items-center justify-between gap-2 mb-4">
+          <span class="badge available font-mono text-[11px] font-medium px-2.5 py-1 rounded-full bg-sage/15 text-sage">
+            Available
+          </span>
+          <span class="book-meta-label font-mono text-[11px] text-charcoal/50">QA76.6 .C662</span>
+        </div>
+
+        <!-- Book Cover Picture -->
+        <div class="h-56 rounded-lg bg-parchmentDark/50 border border-ink/10 mb-4 p-3 flex items-center justify-center overflow-hidden">
+          <img
+            src="https://covers.openlibrary.org/b/isbn/9780262033848-L.jpg"
+            alt="Introduction to Algorithms cover"
+            loading="lazy"
+            class="book-cover-img h-full w-auto object-contain rounded shadow-md group-hover:scale-105 transition-transform duration-300" />
+        </div>
+
+        <h4 class="font-display text-lg font-bold text-ink leading-snug group-hover:text-brass transition">
+          Introduction to Algorithms (CLRS)
+        </h4>
+        <p class="author text-sm text-charcoal/70 mt-1 mb-5">Thomas H. Cormen</p>
+
+        <a href="book.html?title=Introduction%20to%20Algorithms"
+          onclick="event.stopPropagation(); goToBookPage(event, 'Introduction to Algorithms')"
+          class="btn-borrow mt-auto block text-center w-full bg-ink text-parchment font-mono text-xs uppercase tracking-wider py-3 rounded-lg hover:bg-charcoal transition">
+          Borrow / Reserve
+        </a>
+      </div>
+
+      <!-- Card 2 -->
+      <div class="book-card group bg-white border border-ink/10 rounded-xl p-5 shadow-sm hover:shadow-md hover:-translate-y-0.5 transition flex flex-col cursor-pointer"
+        data-category="cse"
+        data-book-title="Python Crash Course"
+        onclick="openBookModal('Python Crash Course', 'Eric Matthes', 'QA76.73 .P98', 'Available', this.querySelector('img').src, 'available')">
+        <div class="flex items-center justify-between gap-2 mb-4">
+          <span class="badge available font-mono text-[11px] font-medium px-2.5 py-1 rounded-full bg-sage/15 text-sage">
+            Available
+          </span>
+          <span class="book-meta-label font-mono text-[11px] text-charcoal/50">QA76.73 .P98</span>
+        </div>
+
+        <!-- Book Cover Picture -->
+        <div class="h-56 rounded-lg bg-parchmentDark/50 border border-ink/10 mb-4 p-3 flex items-center justify-center overflow-hidden">
+          <img
+            src="https://covers.openlibrary.org/b/isbn/9781593279288-L.jpg"
+            alt="Python Crash Course cover"
+            loading="lazy"
+            class="book-cover-img h-full w-auto object-contain rounded shadow-md group-hover:scale-105 transition-transform duration-300" />
+        </div>
+
+        <h4 class="font-display text-lg font-bold text-ink leading-snug group-hover:text-brass transition">
+          Python Crash Course
+        </h4>
+        <p class="author text-sm text-charcoal/70 mt-1 mb-5">Eric Matthes</p>
+
+        <a href="book.html?title=Python%20Crash%20Course"
+          onclick="event.stopPropagation(); goToBookPage(event, 'Python Crash Course')"
+          class="btn-borrow mt-auto block text-center w-full bg-ink text-parchment font-mono text-xs uppercase tracking-wider py-3 rounded-lg hover:bg-charcoal transition">
+          Borrow / Reserve
+        </a>
+      </div>
+<!-- Card 3 -->
+      <div class="book-card group bg-white border border-ink/10 rounded-xl p-5 shadow-sm hover:shadow-md hover:-translate-y-0.5 transition flex flex-col cursor-pointer"
+        data-category="math"
+        data-book-title="Numerical"
+        data-code="MA"
+        onclick="openBookModal('Introductory Methods of Numerical Analysis', 'S.S. Sastry', 'QA297 .S37', 'Available', 'MA', 'available')">
+        <div class="flex items-center justify-between gap-2 mb-4">
+          <span class="badge available font-mono text-[11px] font-medium px-2.5 py-1 rounded-full bg-sage/15 text-sage">
+            Available
+          </span>
+          <span class="book-meta-label font-mono text-[11px] text-charcoal/50">QA297 .S37</span>
+        </div>
+
+        <!-- Book Cover Area (displays uploaded cover_url if present, otherwise styled cover) -->
+        <div class="book-cover-box relative h-56 rounded-lg bg-parchmentDark/60 border border-ink/10 mb-4 p-4 flex flex-col justify-between overflow-hidden">
+          <div class="absolute inset-y-0 left-0 w-2.5 bg-brass"></div>
+          <div class="pl-2 flex items-center justify-between">
+            <span class="font-mono text-[10px] uppercase tracking-[0.2em] text-brass">Mathematics</span>
+            <span class="font-mono text-[10px] text-charcoal/45">5th Ed.</span>
+          </div>
+          <div class="pl-2 my-auto">
+            <p class="font-display text-lg font-bold text-ink leading-snug">Introductory Methods of Numerical Analysis</p>
+            <p class="font-mono text-xs text-charcoal/65 mt-1.5">S.S. Sastry</p>
+          </div>
+          <div class="pl-2 flex items-center justify-between border-t border-ink/10 pt-2">
+            <span class="font-mono text-[10px] text-charcoal/50">PHI Learning</span>
+            <span class="font-mono text-[10px] font-semibold text-brass">QA297 .S37</span>
+          </div>
+        </div>
+
+        <h4 class="font-display text-lg font-bold text-ink leading-snug group-hover:text-brass transition">
+          Introductory Methods of Numerical Analysis
+        </h4>
+        <p class="author text-sm text-charcoal/70 mt-1 mb-5">S.S. Sastry</p>
+
+        <a href="book.html?title=Introductory%20Methods%20of%20Numerical%20Analysis"
+          onclick="event.stopPropagation(); goToBookPage(event, 'Numerical')"
+          class="btn-borrow mt-auto block text-center w-full bg-ink text-parchment font-mono text-xs uppercase tracking-wider py-3 rounded-lg hover:bg-charcoal transition">
+          Borrow / Reserve
+        </a>
+      </div>
+
+    </div>
+  </div>
+</section>
 
     </main>
 
@@ -425,63 +518,262 @@
             </div>
         </div>
     </div>
-
+<script src="js/config.js"></script>
+    <script src="js/api.js"></script>
     <script src="js/auth.js"></script>
     <script src="js/index.js"></script>
 
     <script>
-        function openBookModal(title, author, metaText, statusText, coverText, statusClass) {
-            document.getElementById('modalTitle').textContent = title;
-            document.getElementById('modalAuthor').textContent = author;
-            document.getElementById('modalCallNo').textContent = metaText.startsWith('Due:') ? metaText : 'Call No: ' + metaText;
+      (function () {
+        const isLocalHost =
+          window.location.protocol === "file:" ||
+          ["localhost", "127.0.0.1"].includes(window.location.hostname);
 
-            const badge = document.getElementById('modalBadge');
-            badge.textContent = statusText;
-            badge.className = 'badge ' + statusClass;
+        const rawBase =
+          window.LIB_CONFIG?.API_BASE ||
+          (isLocalHost && window.location.port !== "8000" ? "http://127.0.0.1:8000" : "");
+        const API_ORIGIN = rawBase.replace(/\/api\/?$/, "").replace(/\/$/, "");
 
-            document.getElementById('modalCover').textContent = coverText;
+        function resolveCoverUrl(url) {
+          if (!url) return "";
+          return url.startsWith("/") && !url.startsWith("//")
+            ? `${API_ORIGIN}${url}`
+            : url;
+        }
 
-            const actionBtn = document.getElementById('modalBorrowBtn');
-            if (statusClass === 'reserved') {
-                actionBtn.textContent = 'Place Hold';
-                actionBtn.className = 'btn-borrow secondary';
-                actionBtn.onclick = function () {
-                    reserveBook(title);
-                };
+        function cleanTitle(str) {
+          return String(str || "").replace(/\s*\([^)]*\)\s*/g, " ").trim().toLowerCase();
+        }
+
+        async function getBooksFromApi(params = { page_size: 200 }) {
+          if (typeof Api?.listBooks === "function") {
+            try {
+              const resp = await Api.listBooks(params);
+              if (Array.isArray(resp?.items)) return resp.items;
+            } catch (_) {
+              // Fall back to direct public fetch
+            }
+          }
+
+          const query = new URLSearchParams(params).toString();
+          const res = await fetch(`${API_ORIGIN}/api/books?${query}`);
+          if (!res.ok) {
+            throw new Error(`HTTP ${res.status}`);
+          }
+          const data = await res.json();
+          return data.items || [];
+        }
+
+        window.goToBookPage = async function (event, rawTitle, directId = null) {
+          if (event) event.preventDefault();
+          if (directId) {
+            window.location.href = `book.html?id=${encodeURIComponent(directId)}`;
+            return;
+          }
+          const clean = String(rawTitle || "").replace(/\s*\([^)]*\)\s*/g, " ").trim();
+          try {
+            const items = await getBooksFromApi({ search: clean, page_size: 5 });
+            const match =
+              items.find((b) => b.title?.toLowerCase().includes(clean.toLowerCase())) ||
+              items[0];
+            if (match?.id) {
+              window.location.href = `book.html?id=${encodeURIComponent(match.id)}`;
+              return;
+            }
+          } catch (_) {}
+          window.location.href = `book.html?title=${encodeURIComponent(clean)}`;
+        };
+
+        window.borrowBook = function (title, bookId = null) {
+          window.goToBookPage(null, title, bookId);
+        };
+
+        window.reserveBook = function (title, bookId = null) {
+          window.goToBookPage(null, title, bookId);
+        };
+
+        window.openBookModal = function (title, author, metaText, statusText, coverSrcOrText, statusClass, bookId = null) {
+          document.getElementById("modalTitle").textContent = title;
+          document.getElementById("modalAuthor").textContent = author;
+          document.getElementById("modalCallNo").textContent = metaText
+            ? (metaText.startsWith("Due:") ? metaText : "Call No: " + metaText)
+            : "";
+
+          const badge = document.getElementById("modalBadge");
+          badge.textContent = statusText;
+          badge.className = statusClass === "reserved"
+            ? "badge reserved font-mono text-[11px] font-medium px-2.5 py-1 rounded-full bg-rust/10 text-rust"
+            : "badge available font-mono text-[11px] font-medium px-2.5 py-1 rounded-full bg-sage/15 text-sage";
+
+          const modalCover = document.getElementById("modalCover");
+          if (modalCover) {
+            modalCover.innerHTML = "";
+            modalCover.style.overflow = "hidden";
+            const isImageUrl =
+              typeof coverSrcOrText === "string" &&
+              (coverSrcOrText.startsWith("http") || coverSrcOrText.startsWith("/") || coverSrcOrText.startsWith("./"));
+
+            if (isImageUrl) {
+              const img = document.createElement("img");
+              img.src = coverSrcOrText;
+              img.alt = `${title} cover`;
+              img.className = "w-full h-full object-cover";
+              modalCover.appendChild(img);
             } else {
-                actionBtn.textContent = 'Borrow / Reserve';
-                actionBtn.className = 'btn-borrow';
-                actionBtn.onclick = function () {
-                    borrowBook(title);
-                };
+              modalCover.textContent = coverSrcOrText || "BK";
             }
+          }
 
-            document.getElementById('bookModal').style.display = 'flex';
-        }
+          const actionBtn = document.getElementById("modalBorrowBtn");
+          if (statusClass === "reserved") {
+            actionBtn.textContent = "Place Hold";
+            actionBtn.className = "btn-borrow secondary mt-4 w-full border border-ink/25 bg-parchment/60 text-ink font-mono text-xs uppercase tracking-wider py-2.5 rounded-lg hover:bg-parchmentDark transition";
+            actionBtn.onclick = function () {
+              window.reserveBook(title, bookId);
+            };
+          } else {
+            actionBtn.textContent = "Borrow / Reserve";
+            actionBtn.className = "btn-borrow mt-4 w-full bg-ink text-parchment font-mono text-xs uppercase tracking-wider py-2.5 rounded-lg hover:bg-charcoal transition";
+            actionBtn.onclick = function () {
+              window.borrowBook(title, bookId);
+            };
+          }
 
-        function closeBookModal() {
-            document.getElementById('bookModal').style.display = 'none';
-        }
+          document.getElementById("bookModal").style.display = "flex";
+        };
 
-        document.addEventListener('keydown', function (event) {
-            if (event.key === 'Escape') {
-                closeBookModal();
-            }
+        window.closeBookModal = function () {
+          document.getElementById("bookModal").style.display = "none";
+        };
+
+        document.addEventListener("keydown", function (event) {
+          if (event.key === "Escape") window.closeBookModal();
         });
 
-        if (typeof window.borrowBook !== 'function') {
-            window.borrowBook = function (title) {
-                window.location.href = 'dashboard.html?borrow=' + encodeURIComponent(title);
-            };
+        if (typeof window.filterBooks !== "function") {
+          window.filterBooks = function (category) {
+            document.querySelectorAll(".featured-catalog .tab-btn").forEach((btn) => {
+              const isMatch = btn.getAttribute("onclick")?.includes(`'${category}'`);
+              btn.classList.toggle("active", Boolean(isMatch));
+            });
+            document.querySelectorAll("#bookGrid .book-card").forEach((card) => {
+              const show = category === "all" || card.dataset.category === category;
+              card.style.display = show ? "flex" : "none";
+            });
+          };
         }
 
-        if (typeof window.reserveBook !== 'function') {
-            window.reserveBook = function (title) {
-                window.location.href = 'dashboard.html?reserve=' + encodeURIComponent(title);
-            };
+        async function syncFeaturedBooks() {
+          const grid = document.getElementById("bookGrid");
+          if (!grid) return;
+
+          const cards = Array.from(grid.querySelectorAll(".book-card"));
+          if (!cards.length) return;
+
+          try {
+            const books = await getBooksFromApi({ page_size: 200 });
+            const usedIds = new Set();
+
+            cards.forEach((card, idx) => {
+              const rawTarget = card.dataset.bookTitle || card.querySelector("h4")?.textContent || "";
+              const target = cleanTitle(rawTarget);
+
+              let book = books.find(
+                (b) => !usedIds.has(b.id) && cleanTitle(b.title).includes(target)
+              );
+              if (!book) {
+                book = books.find((b) => !usedIds.has(b.id)) || books[idx];
+              }
+
+              const badge = card.querySelector(".badge");
+              const btn = card.querySelector(".btn-borrow");
+              if (!book) {
+                if (badge) badge.textContent = "No copies listed";
+                return;
+              }
+
+              usedIds.add(book.id);
+              const available = Math.max(0, Number(book.available ?? 0));
+              const isAvailable = available > 0;
+              const statusText = isAvailable
+                ? `Available (${available} ${available === 1 ? "copy" : "copies"})`
+                : "Checked Out";
+              const bookUrl = `book.html?id=${encodeURIComponent(book.id)}`;
+
+              const titleEl = card.querySelector("h4");
+              const authorEl = card.querySelector(".author");
+              const metaEl = card.querySelector(".book-meta-label");
+              if (titleEl) titleEl.textContent = book.title;
+              if (authorEl) authorEl.textContent = book.author;
+              if (metaEl) metaEl.textContent = book.call_number || book.genre || "";
+
+              // Swap in uploaded cover_url if available (supports both <img> cards and .book-cover-box)
+              const dbCover = resolveCoverUrl(book.cover_url);
+              const imgEl = card.querySelector(".book-cover-img");
+              const coverBox = card.querySelector(".book-cover-box");
+
+              if (imgEl && dbCover) {
+                imgEl.src = dbCover;
+                imgEl.alt = `${book.title} cover`;
+              } else if (coverBox && dbCover) {
+                coverBox.className = "book-cover-box h-56 rounded-lg bg-parchmentDark/50 border border-ink/10 mb-4 p-3 flex items-center justify-center overflow-hidden";
+                coverBox.innerHTML = "";
+                const uploadedImg = document.createElement("img");
+                uploadedImg.src = dbCover;
+                uploadedImg.alt = `${book.title} cover`;
+                uploadedImg.className = "book-cover-img h-full w-auto object-contain rounded shadow-md group-hover:scale-105 transition-transform duration-300";
+                coverBox.appendChild(uploadedImg);
+              }
+
+              if (badge) {
+                badge.textContent = statusText;
+                badge.className = isAvailable
+                  ? "badge available font-mono text-[11px] font-medium px-2.5 py-1 rounded-full bg-sage/15 text-sage"
+                  : "badge reserved font-mono text-[11px] font-medium px-2.5 py-1 rounded-full bg-rust/10 text-rust";
+              }
+
+              if (btn) {
+                btn.href = bookUrl;
+                btn.textContent = isAvailable ? "Borrow / Reserve" : "Place Hold";
+                btn.className = isAvailable
+                  ? "btn-borrow mt-auto block text-center w-full bg-ink text-parchment font-mono text-xs uppercase tracking-wider py-3 rounded-lg hover:bg-charcoal transition"
+                  : "btn-borrow secondary mt-auto block text-center w-full border border-ink/25 bg-parchment/60 text-ink font-mono text-xs uppercase tracking-wider py-3 rounded-lg hover:bg-parchmentDark transition";
+                btn.onclick = (e) => e.stopPropagation();
+              }
+
+              const code = card.dataset.code || (book.department || book.genre || "BK").slice(0, 2).toUpperCase();
+              const activeCover = card.querySelector(".book-cover-img")?.src || dbCover || code;
+              card.onclick = () => {
+                window.openBookModal(
+                  book.title,
+                  book.author,
+                  book.call_number || "",
+                  statusText,
+                  activeCover,
+                  isAvailable ? "available" : "reserved",
+                  book.id
+                );
+              };
+            });
+          } catch (err) {
+            console.error("Failed to sync featured books:", err);
+            cards.forEach((card) => {
+              const badge = card.querySelector(".badge");
+              if (badge) badge.textContent = "Catalog offline";
+            });
+          }
         }
+
+        if (document.readyState === "loading") {
+          document.addEventListener("DOMContentLoaded", syncFeaturedBooks);
+        } else {
+          syncFeaturedBooks();
+        }
+      })();
     </script>
 
 </body>
+
+
 
 </html>

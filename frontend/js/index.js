@@ -442,3 +442,69 @@ document.addEventListener("DOMContentLoaded", () => {
     }
 
 });
+async function syncFeaturedBookCopies() {
+  const grid = document.getElementById("bookGrid");
+  if (!grid || typeof Api?.listBooks !== "function") return;
+
+  try {
+    const resp = await Api.listBooks({ page_size: 200 });
+    const books = resp?.items || [];
+
+    grid.querySelectorAll(".book-card[data-book-title]").forEach((card) => {
+      const target = card.dataset.bookTitle.trim().toLowerCase();
+      const book = books.find((b) => b.title?.toLowerCase().includes(target));
+      if (!book) return;
+
+      const available = Math.max(0, Number(book.available ?? 0));
+      const isAvailable = available > 0;
+      const statusText = isAvailable
+        ? `Available (${available} ${available === 1 ? "copy" : "copies"})`
+        : "Checked Out";
+
+      // 1. Update availability badge
+      const badge = card.querySelector(".badge");
+      if (badge) {
+        badge.textContent = statusText;
+        badge.className = isAvailable
+          ? "badge available font-mono text-[11px] font-medium px-2.5 py-1 rounded-full bg-sage/15 text-sage"
+          : "badge reserved font-mono text-[11px] font-medium px-2.5 py-1 rounded-full bg-rust/10 text-rust";
+      }
+
+      // 2. Update call number if returned by backend
+      const metaLabel = card.querySelector(".book-meta-label");
+      if (metaLabel && book.call_number) {
+        metaLabel.textContent = book.call_number;
+      }
+
+      // 3. Update button text, style, and direct book ID link
+      const btn = card.querySelector(".btn-borrow");
+      if (btn) {
+        btn.href = `book.html?id=${encodeURIComponent(book.id)}`;
+        btn.onclick = (e) => e.stopPropagation();
+        btn.textContent = isAvailable ? "Borrow / Reserve" : "Place Hold";
+        btn.className = isAvailable
+          ? "btn-borrow mt-auto block text-center w-full bg-ink text-parchment font-mono text-xs uppercase tracking-wider py-3 rounded-lg hover:bg-charcoal transition"
+          : "btn-borrow secondary mt-auto block text-center w-full border border-ink/25 bg-parchment/60 text-ink font-mono text-xs uppercase tracking-wider py-3 rounded-lg hover:bg-parchmentDark transition";
+      }
+
+      // 4. Update modal click handler with live copy count
+      const code = card.dataset.code || "BK";
+      card.onclick = () => {
+        if (typeof openBookModal === "function") {
+          openBookModal(
+            book.title,
+            book.author,
+            book.call_number || "",
+            statusText,
+            code,
+            isAvailable ? "available" : "reserved"
+          );
+        }
+      };
+    });
+  } catch (err) {
+    console.warn("Could not sync live book copies:", err);
+  }
+}
+
+document.addEventListener("DOMContentLoaded", syncFeaturedBookCopies);

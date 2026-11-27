@@ -69,10 +69,22 @@ def user_out(u: models.User) -> schemas.UserOut:
     )
 
 
-def book_out(b: models.Book) -> schemas.BookOut:
+def book_out(b: models.Book, db: Optional[Session] = None) -> schemas.BookOut:
+    available = b.available
+    if db is not None:
+        active_borrows = db.query(models.Borrow).filter(
+            models.Borrow.book_id == b.id,
+            models.Borrow.returned_at.is_(None),
+        ).count()
+        pending_requests = db.query(models.BorrowRequest).filter(
+            models.BorrowRequest.book_id == b.id,
+            models.BorrowRequest.status == "pending",
+        ).count()
+        available = max(0, (b.copies or 0) - active_borrows - pending_requests)
+
     return schemas.BookOut(
         id=b.id, title=b.title, author=b.author, isbn=b.isbn, genre=b.genre,
-        call_number=b.call_number or "", copies=b.copies, available=b.available,
+        call_number=b.call_number or "", copies=b.copies, available=available,
         description=b.description or "", cover_url=b.cover_url or "", added_at=b.added_at,
         department=getattr(b, "department", "") or "",
         session=getattr(b, "session", "") or "",
@@ -436,7 +448,7 @@ def list_overdue(db: Session = Depends(get_db), admin: models.User = Depends(req
     from datetime import date, timedelta
 
     grace_days = int(get_setting(db, "grace_days", "14"))
-    fine_per_day = float(get_setting(db, "fine_per_day", "10"))
+    fine_per_day = float(get_setting(db, "late_return_default_fine", get_setting(db, "fine_per_day", "10")))
 
     items = []
     borrows = db.query(models.Borrow).filter(
@@ -674,7 +686,6 @@ def list_books(
     page: int = Query(default=1, ge=1),
     page_size: int = Query(default=100, ge=1, le=200),
     db: Session = Depends(get_db),
-    current_user: models.User = Depends(get_current_user),
 ):
     q = db.query(models.Book)
     if search:
@@ -692,10 +703,8 @@ def list_books(
         q = q.filter(models.Book.category == category)
     total = q.count()
     items = q.order_by(models.Book.added_at.desc()).offset((page - 1) * page_size).limit(page_size).all()
-    # Facets are computed over the whole table (ignoring the active filters)
-    # so dropdown options stay stable while filtering.
     return schemas.BookListOut(
-        items=[book_out(b) for b in items],
+        items=[book_out(b, db) for b in items],
         total=total,
         authors=_distinct_values(db, models.Book.author),
         departments=_distinct_values(db, models.Book.department),
@@ -706,11 +715,11 @@ def list_books(
 
 
 @app.get("/api/books/{book_id}", response_model=schemas.BookOut)
-def get_book(book_id: str, db: Session = Depends(get_db), current_user: models.User = Depends(get_current_user)):
+def get_book(book_id: str, db: Session = Depends(get_db)):
     book = db.query(models.Book).filter(models.Book.id == book_id).first()
     if not book:
         raise HTTPException(status_code=404, detail="Book not found.")
-    return book_out(book)
+    return book_out(book, db)
 
 
 @app.post("/api/books", response_model=schemas.BookOut, status_code=status.HTTP_201_CREATED)
@@ -804,7 +813,6 @@ def borrow_book(book_id: str, db: Session = Depends(get_db), current_user: model
     db.commit()
     return book_out(book)
 
-
 @app.post("/api/books/{book_id}/return", response_model=schemas.BookOut)
 def return_book(book_id: str, db: Session = Depends(get_db), current_user: models.User = Depends(get_current_user)):
     book = db.query(models.Book).filter(models.Book.id == book_id).first()
@@ -815,12 +823,13 @@ def return_book(book_id: str, db: Session = Depends(get_db), current_user: model
         .filter(models.Borrow.book_id == book.id, models.Borrow.user_id == current_user.id, models.Borrow.returned_at.is_(None))
         .first()
     )
-    if open_borrow:
-        open_borrow.returned_at = date.today()
+    if not open_borrow:
+        raise HTTPException(status_code=400, detail="You do not have an active loan for this book.")
+    open_borrow.returned_at = date.today()
     book.available = min(book.copies, book.available + 1)
     db.commit()
     db.refresh(book)
-    return book_out(book)
+    return book_out(book, db)
 
 
 @app.get("/api/borrows/me")
@@ -828,22 +837,29 @@ def list_my_borrows(
     db: Session = Depends(get_db),
     current_user: models.User = Depends(get_current_user),
 ):
-    from datetime import timedelta
     grace_days = int(get_setting(db, "grace_days", "14"))
+    fine_per_day = float(get_setting(db, "late_return_default_fine", get_setting(db, "fine_per_day", "10")))
     rows = (
         db.query(models.Borrow)
         .filter(models.Borrow.user_id == current_user.id, models.Borrow.returned_at.is_(None))
         .order_by(models.Borrow.borrowed_at.desc())
         .all()
     )
-    return {"items": [{
-        "id": borrow.id,
-        "bookId": borrow.book_id,
-        "bookTitle": borrow.book.title,
-        "author": borrow.book.author,
-        "borrowedAt": borrow.borrowed_at,
-        "dueDate": borrow.borrowed_at + timedelta(days=grace_days),
-    } for borrow in rows]}
+    items = []
+    for borrow in rows:
+        due = borrow.borrowed_at + timedelta(days=grace_days)
+        days_over = max(0, (date.today() - due).days)
+        items.append({
+            "id": borrow.id,
+            "bookId": borrow.book_id,
+            "bookTitle": borrow.book.title,
+            "author": borrow.book.author,
+            "borrowedAt": borrow.borrowed_at,
+            "dueDate": due,
+            "daysOverdue": days_over,
+            "fine": round(days_over * fine_per_day, 2),
+        })
+    return {"items": items}
 
 
 # ===========================================================================
